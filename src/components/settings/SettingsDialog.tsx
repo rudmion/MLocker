@@ -15,14 +15,23 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useTheme } from '@/components/theme-provider';
-import { Shield, Info, Sun, Moon, Monitor } from 'lucide-react';
+import { Shield, Info, Sun, Moon, Monitor, RefreshCw } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useState, useEffect } from 'react';
 import { getVersion } from '@tauri-apps/api/app';
 
-export function SettingsDialog() {
+type SettingsDialogProps = {
+  onCheckForUpdate?: () => void;
+  isCheckingUpdate?: boolean;
+};
+
+export function SettingsDialog({
+  onCheckForUpdate,
+  isCheckingUpdate = false,
+}: SettingsDialogProps) {
   const open = useSettingsStore((s) => s.settingsOpen);
   const setOpen = useSettingsStore((s) => s.setSettingsOpen);
   const masterPasswordEnabled = useSettingsStore(
@@ -128,6 +137,21 @@ export function SettingsDialog() {
                   </p>
                 </div>
               </button>
+
+              {onCheckForUpdate && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={onCheckForUpdate}
+                  disabled={isCheckingUpdate}
+                >
+                  <RefreshCw
+                    size={14}
+                    className={`mr-2 ${isCheckingUpdate ? 'animate-spin' : ''}`}
+                  />
+                  {isCheckingUpdate ? 'Проверка...' : 'Проверить обновления'}
+                </Button>
+              )}
             </div>
           </div>
         </DialogContent>

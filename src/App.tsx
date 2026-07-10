@@ -29,8 +29,10 @@ function App() {
     latestVersion,
     currentVersion,
     changelog,
+    checking,
     dismissUpdate,
     installUpdate,
+    checkForUpdate,
   } = useUpdateChecker();
 
   const [masterState, setMasterState] = useState<
@@ -112,7 +114,10 @@ function App() {
       )}
       {masterState === 'unlocked' && (
         <TooltipProvider delayDuration={2000}>
-          <SettingsDialog />
+          <SettingsDialog
+            onCheckForUpdate={() => checkForUpdate(true)}
+            isCheckingUpdate={checking}
+          />
           <SidebarProvider>
             <Main />
           </SidebarProvider>
