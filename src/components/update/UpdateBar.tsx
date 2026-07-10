@@ -48,14 +48,14 @@ export function UpdateBar({
           <>
             <Loader2 size={16} className="shrink-0 animate-spin text-primary" />
             <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center justify-between text-sm mb-1.5">
                 <span className="text-muted-foreground truncate">
                   Установка обновления...
                 </span>
                 <span className="text-muted-foreground tabular-nums ml-2">100%</span>
               </div>
+              <Progress value={100} className="h-1.5" />
             </div>
-            <Progress value={100} className="h-1.5 absolute bottom-0 left-0 right-0" />
           </>
         )}
 

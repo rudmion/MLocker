@@ -37,7 +37,7 @@ export function useUpdateChecker() {
     error: null,
   });
   const [dismissed, setDismissed] = useState(false);
-  const installRef = useRef<() => Promise<void>>();
+  const installRef = useRef<(() => Promise<void>) | undefined>(undefined);
 
   const doInstall = useCallback(async () => {
     setState((prev) => ({ ...prev, status: 'downloading', downloadProgress: 0, error: null }));

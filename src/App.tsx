@@ -27,8 +27,6 @@ function App() {
   const {
     hasUpdate,
     latestVersion,
-    currentVersion,
-    changelog,
     checking,
     status,
     downloadProgress,
