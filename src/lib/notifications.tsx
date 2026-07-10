@@ -47,13 +47,13 @@ export const notifications = {
       icon: <AlertTriangle className="text-yellow-500 pe-1" />,
     }),
 
-  updateInstalled: (onRestart: () => void) =>
-    toast.success('Обновление установлено. Перезагрузите приложение.', {
+  updateInstalled: (onInstallAndRestart: () => void) =>
+    toast.success('Обновление загружено. Перезагрузите для установки.', {
       icon: <RotateCw className="text-green-500 pe-1" />,
       duration: 20000,
       action: {
         label: 'Перезагрузить',
-        onClick: onRestart,
+        onClick: onInstallAndRestart,
       },
     }),
 };

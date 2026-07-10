@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 use tauri::Emitter;
+use tauri::Manager;
 
 const REPO: &str = "rudmion/MLocker";
 
@@ -114,7 +115,7 @@ pub async fn check_for_update(app: AppHandle) -> Result<UpdateInfo, String> {
 }
 
 #[tauri::command]
-pub async fn download_and_install_update(app: AppHandle, url: String) -> Result<String, String> {
+pub async fn download_update(app: AppHandle, url: String) -> Result<String, String> {
     let client = reqwest::Client::builder()
         .user_agent("MLocker-Updater")
         .build()
@@ -132,7 +133,6 @@ pub async fn download_and_install_update(app: AppHandle, url: String) -> Result<
 
     let total_size = response.content_length().unwrap_or(0);
 
-    // Determine file extension from URL
     let file_name = url
         .rsplit('/')
         .next()
@@ -142,7 +142,6 @@ pub async fn download_and_install_update(app: AppHandle, url: String) -> Result<
     let temp_dir = std::env::temp_dir();
     let file_path = temp_dir.join(&file_name);
 
-    // Download with progress
     let mut file = std::fs::File::create(&file_path)
         .map_err(|e| format!("Failed to create temp file: {}", e))?;
 
@@ -169,17 +168,58 @@ pub async fn download_and_install_update(app: AppHandle, url: String) -> Result<
 
     drop(file);
 
-    // Run the installer silently in the background
-    let _ = app.emit("update-progress", serde_json::json!({
-        "downloaded": total_size,
-        "total": total_size,
-        "status": "installing",
-    }));
+    // Save path for later install
+    let pending_path = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
+    std::fs::create_dir_all(&pending_path)
+        .map_err(|e| format!("Failed to create app data dir: {}", e))?;
+    let pending_file = pending_path.join("pending_update.json");
+    std::fs::write(
+        &pending_file,
+        serde_json::json!({ "path": file_path.to_string_lossy().to_string() }).to_string(),
+    )
+    .map_err(|e| format!("Failed to save pending update: {}", e))?;
 
+    Ok(file_path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub async fn install_downloaded_update(app: AppHandle) -> Result<(), String> {
+    let pending_path = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
+    let pending_file = pending_path.join("pending_update.json");
+
+    let content = std::fs::read_to_string(&pending_file)
+        .map_err(|e| format!("Failed to read pending update: {}", e))?;
+    let data: serde_json::Value =
+        serde_json::from_str(&content).map_err(|e| format!("Failed to parse pending update: {}", e))?;
+    let file_path = data["path"]
+        .as_str()
+        .ok_or("No pending update path")?;
+
+    let file_path = std::path::PathBuf::from(file_path);
+
+    if !file_path.exists() {
+        return Err("Installer file not found".to_string());
+    }
+
+    // Get current install directory from running executable
+    let exe_path =
+        std::env::current_exe().map_err(|e| format!("Failed to get current exe path: {}", e))?;
+    let install_dir = exe_path
+        .parent()
+        .ok_or("Failed to get install directory")?;
+
+    // Launch installer silently with /S and /D=<install_dir>
     #[cfg(target_os = "windows")]
     {
         std::process::Command::new(&file_path)
             .arg("/S")
+            .arg(format!("/D={}", install_dir.display()))
             .spawn()
             .map_err(|e| format!("Failed to launch installer: {}", e))?;
     }
@@ -201,7 +241,10 @@ pub async fn download_and_install_update(app: AppHandle, url: String) -> Result<
             .map_err(|e| format!("Failed to open installer: {}", e))?;
     }
 
-    Ok(file_path.to_string_lossy().to_string())
+    // Cleanup
+    let _ = std::fs::remove_file(&pending_file);
+
+    Ok(())
 }
 
 fn find_download_url(release: &serde_json::Value) -> Option<String> {
@@ -233,11 +276,6 @@ fn find_download_url(release: &serde_json::Value) -> Option<String> {
             .and_then(|v| v.as_str())
             .map(|s| s.to_string())
     })
-}
-
-#[tauri::command]
-pub fn restart_app(app: AppHandle) {
-    app.restart();
 }
 
 fn compare_versions(latest: &str, current: &str) -> bool {

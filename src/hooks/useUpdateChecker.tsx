@@ -99,8 +99,8 @@ export function useUpdateChecker() {
     setDismissed(true);
   }, []);
 
-  const restartApp = useCallback(async () => {
-    await invoke('restart_app');
+  const restartWithInstall = useCallback(async () => {
+    await invoke('install_downloaded_update');
   }, []);
 
   const installUpdate = useCallback(async () => {
@@ -126,7 +126,7 @@ export function useUpdateChecker() {
         throw new Error('Download URL not available');
       }
 
-      await invoke<string>('download_and_install_update', { url: info.download_url });
+      await invoke<string>('download_update', { url: info.download_url });
 
       setState((prev) => ({
         ...prev,
@@ -166,7 +166,7 @@ export function useUpdateChecker() {
     error: state.error,
     dismissUpdate,
     installUpdate,
-    restartApp,
+    restartWithInstall,
     checkForUpdate,
   };
 }

@@ -36,7 +36,7 @@ function App() {
     updateInstalled,
     dismissUpdate,
     installUpdate,
-    restartApp,
+    restartWithInstall,
     checkForUpdate,
   } = useUpdateChecker();
 
@@ -80,9 +80,9 @@ function App() {
   useEffect(() => {
     if (updateInstalled && !updateNotified.current) {
       updateNotified.current = true;
-      notifications.updateInstalled(restartApp);
+      notifications.updateInstalled(restartWithInstall);
     }
-  }, [updateInstalled, restartApp]);
+  }, [updateInstalled, restartWithInstall]);
 
   const handleUnlocked = async () => {
     resetAttempts();
