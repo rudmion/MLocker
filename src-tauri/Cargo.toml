@@ -19,9 +19,10 @@ pbkdf2 = "0.12"
 sha2 = "0.10"
 base64 = "0.22"
 aes-gcm = "0.10"
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.12", features = ["json", "stream"] }
 url = "2"
 sanitize-filename = "0.5"
 tauri-plugin-shell = "2.0.0"
 tauri-plugin-single-instance = "2"
 tauri-plugin-updater = "2"
+futures-util = "0.3"

@@ -30,6 +30,8 @@ function App() {
     currentVersion,
     changelog,
     checking,
+    downloading,
+    downloadProgress,
     dismissUpdate,
     installUpdate,
     checkForUpdate,
@@ -85,6 +87,8 @@ function App() {
           latestVersion={latestVersion}
           currentVersion={currentVersion}
           changelog={changelog}
+          downloading={downloading}
+          downloadProgress={downloadProgress}
           onInstall={installUpdate}
           onDismiss={dismissUpdate}
         />
