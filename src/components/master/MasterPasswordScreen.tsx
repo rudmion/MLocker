@@ -286,5 +286,3 @@ export function MasterPasswordScreen({
     </div>
   );
 }
-
-const MAX_ATTEMPTS = 5;

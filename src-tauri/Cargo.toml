@@ -1,6 +1,6 @@
 [package]
 name = "manager-lock"
-version = "0.1.0"
+version = "0.3.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
@@ -24,3 +24,4 @@ url = "2"
 sanitize-filename = "0.5"
 tauri-plugin-shell = "2.0.0"
 tauri-plugin-single-instance = "2"
+tauri-plugin-updater = "2"

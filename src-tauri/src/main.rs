@@ -2,6 +2,7 @@
 
 mod favicon;
 mod crypto;
+mod updater;
 
 use tauri::{Manager, State};
 use std::sync::Mutex;
@@ -527,6 +528,7 @@ fn main() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 window.set_focus().ok();
@@ -546,7 +548,8 @@ fn main() {
             setup_master_password_with_recovery,
             reset_master_password,
             clear_master_password,
-            favicon::download_favicon
+            favicon::download_favicon,
+            updater::check_for_update
         ])
         .run(tauri::generate_context!())
         .expect("error while running app");
