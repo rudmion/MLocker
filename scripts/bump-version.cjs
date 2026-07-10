@@ -42,7 +42,24 @@ fs.writeFileSync(cargoPath, cargoContent);
 console.log(`✓ Cargo.toml: ${oldVersion} → ${newVersion}`);
 
 console.log(`\nВерсия обновлена до ${newVersion}`);
-console.log('Не забудьте запушить изменения и создать тег:');
-console.log(`  git add . && git commit -m "chore: bump version to ${newVersion}"`);
-console.log(`  git tag v${newVersion}`);
-console.log(`  git push origin development && git push origin v${newVersion}`);
+
+// 4. Git: коммит, тег, пуш
+const { execSync } = require('child_process');
+
+try {
+  console.log('\n--- Git ---');
+  execSync('git add .', { cwd: rootDir, stdio: 'inherit' });
+  execSync(`git commit -m "chore: bump version to ${newVersion}"`, { cwd: rootDir, stdio: 'inherit' });
+  execSync(`git tag v${newVersion}`, { cwd: rootDir, stdio: 'inherit' });
+  console.log(`✓ Тег v${newVersion} создан`);
+  execSync('git push', { cwd: rootDir, stdio: 'inherit' });
+  execSync(`git push origin v${newVersion}`, { cwd: rootDir, stdio: 'inherit' });
+  console.log('✓ Всё запушено, релиз запустится автоматически');
+} catch (e) {
+  console.error('\nОшибка при работе с git:', e.message);
+  console.log('Выполните вручную:');
+  console.log(`  git add . && git commit -m "chore: bump version to ${newVersion}"`);
+  console.log(`  git tag v${newVersion}`);
+  console.log(`  git push && git push origin v${newVersion}`);
+  process.exit(1);
+}
