@@ -19,7 +19,8 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { useTheme } from '@/components/theme-provider';
 import { Shield, Info, Sun, Moon, Monitor } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getVersion } from '@tauri-apps/api/app';
 
 export function SettingsDialog() {
   const open = useSettingsStore((s) => s.settingsOpen);
@@ -32,8 +33,13 @@ export function SettingsDialog() {
   );
 
   const [confirmDisableOpen, setConfirmDisableOpen] = useState(false);
+  const [version, setVersion] = useState('0.1.0');
 
   const { theme, setTheme } = useTheme();
+
+  useEffect(() => {
+    getVersion().then(setVersion).catch(() => {});
+  }, []);
 
   const themeOptions = [
     { value: 'light' as const, label: 'Светлая', icon: Sun },
@@ -118,7 +124,7 @@ export function SettingsDialog() {
                 <div>
                   <p className="font-medium">MLocker</p>
                   <p className="text-xs text-muted-foreground">
-                    Менеджер паролей v0.1.0
+                    Менеджер паролей v{version}
                   </p>
                 </div>
               </button>

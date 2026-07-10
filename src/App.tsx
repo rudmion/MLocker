@@ -13,6 +13,8 @@ import { Toaster } from '@/components/ui/sonner';
 import { SettingsDialog } from '@/components/settings/SettingsDialog';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useMasterPasswordAttempts } from '@/hooks/useMasterPasswordAttempts';
+import { useUpdateChecker } from '@/hooks/useUpdateChecker';
+import { UpdateDialog } from '@/components/update/UpdateDialog';
 
 function App() {
   const loadData = useStore((s) => s.loadData);
@@ -21,6 +23,15 @@ function App() {
   );
 
   useKeyboardShortcuts();
+
+  const {
+    hasUpdate,
+    latestVersion,
+    currentVersion,
+    changelog,
+    dismissUpdate,
+    installUpdate,
+  } = useUpdateChecker();
 
   const [masterState, setMasterState] = useState<
     'loading' | 'setup' | 'locked' | 'recovery' | 'unlocked'
@@ -67,6 +78,15 @@ function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <Toaster />
+      {hasUpdate && (
+        <UpdateDialog
+          latestVersion={latestVersion}
+          currentVersion={currentVersion}
+          changelog={changelog}
+          onInstall={installUpdate}
+          onDismiss={dismissUpdate}
+        />
+      )}
       {masterState === 'loading' && (
         <div className="flex h-screen items-center justify-center bg-background">
           <p className="text-muted-foreground">Загрузка...</p>

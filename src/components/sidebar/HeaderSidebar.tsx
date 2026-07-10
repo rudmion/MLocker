@@ -20,7 +20,7 @@ export function Header() {
           >
             <div>
               <img src={'/logo.svg'} className="w-[28px]" alt="Logo" />
-              <span className="text-sm">MLocker</span>
+              <span className="text-sm">MLocker v0.2.0</span>
             </div>
           </SidebarMenuButton>
         </SidebarMenuItem>
