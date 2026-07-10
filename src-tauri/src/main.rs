@@ -550,7 +550,8 @@ fn main() {
             clear_master_password,
             favicon::download_favicon,
             updater::check_for_update,
-            updater::download_and_install_update
+            updater::download_and_install_update,
+            updater::restart_app
         ])
         .run(tauri::generate_context!())
         .expect("error while running app");

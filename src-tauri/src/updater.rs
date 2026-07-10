@@ -169,7 +169,7 @@ pub async fn download_and_install_update(app: AppHandle, url: String) -> Result<
 
     drop(file);
 
-    // Run the installer
+    // Run the installer silently in the background
     let _ = app.emit("update-progress", serde_json::json!({
         "downloaded": total_size,
         "total": total_size,
@@ -179,6 +179,7 @@ pub async fn download_and_install_update(app: AppHandle, url: String) -> Result<
     #[cfg(target_os = "windows")]
     {
         std::process::Command::new(&file_path)
+            .arg("/S")
             .spawn()
             .map_err(|e| format!("Failed to launch installer: {}", e))?;
     }
@@ -186,6 +187,7 @@ pub async fn download_and_install_update(app: AppHandle, url: String) -> Result<
     #[cfg(target_os = "macos")]
     {
         std::process::Command::new("open")
+            .arg("-W")
             .arg(&file_path)
             .spawn()
             .map_err(|e| format!("Failed to open installer: {}", e))?;
@@ -231,6 +233,11 @@ fn find_download_url(release: &serde_json::Value) -> Option<String> {
             .and_then(|v| v.as_str())
             .map(|s| s.to_string())
     })
+}
+
+#[tauri::command]
+pub fn restart_app(app: AppHandle) {
+    app.restart();
 }
 
 fn compare_versions(latest: &str, current: &str) -> bool {

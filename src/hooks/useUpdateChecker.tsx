@@ -19,6 +19,7 @@ type UpdateState = {
   checking: boolean;
   downloading: boolean;
   downloadProgress: number;
+  updateInstalled: boolean;
   error: string | null;
 };
 
@@ -31,6 +32,7 @@ export function useUpdateChecker() {
     checking: false,
     downloading: false,
     downloadProgress: 0,
+    updateInstalled: false,
     error: null,
   });
   const [dismissed, setDismissed] = useState(false);
@@ -50,6 +52,7 @@ export function useUpdateChecker() {
           checking: false,
           downloading: false,
           downloadProgress: 0,
+          updateInstalled: false,
           error: null,
         });
         setDismissed(false);
@@ -96,6 +99,10 @@ export function useUpdateChecker() {
     setDismissed(true);
   }, []);
 
+  const restartApp = useCallback(async () => {
+    await invoke('restart_app');
+  }, []);
+
   const installUpdate = useCallback(async () => {
     setState((prev) => ({ ...prev, downloading: true, downloadProgress: 0, error: null }));
 
@@ -121,12 +128,13 @@ export function useUpdateChecker() {
 
       await invoke<string>('download_and_install_update', { url: info.download_url });
 
-      const { toast } = await import('sonner');
-      const { RotateCw } = await import('lucide-react');
-      toast.success('Обновление загружено. Установите обновление и перезапустите приложение.', {
-        icon: <RotateCw className="text-green-500 pe-1" />,
-        duration: 10000,
-      });
+      setState((prev) => ({
+        ...prev,
+        hasUpdate: false,
+        downloading: false,
+        downloadProgress: 0,
+        updateInstalled: true,
+      }));
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       setState((prev) => ({
@@ -143,7 +151,6 @@ export function useUpdateChecker() {
       });
     } finally {
       unlisten();
-      setState((prev) => ({ ...prev, hasUpdate: false, downloading: false, downloadProgress: 0 }));
     }
   }, []);
 
@@ -155,9 +162,11 @@ export function useUpdateChecker() {
     checking: state.checking,
     downloading: state.downloading,
     downloadProgress: state.downloadProgress,
+    updateInstalled: state.updateInstalled,
     error: state.error,
     dismissUpdate,
     installUpdate,
+    restartApp,
     checkForUpdate,
   };
 }
