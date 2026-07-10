@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { relaunch } from '@tauri-apps/plugin-process';
 
 type UpdateInfo = {
   has_update: boolean;
@@ -11,13 +12,15 @@ type UpdateInfo = {
   download_url: string | null;
 };
 
+export type UpdateStatus = 'idle' | 'downloading' | 'installing' | 'restart_needed' | 'error';
+
 type UpdateState = {
   hasUpdate: boolean;
   latestVersion: string;
   currentVersion: string;
   changelog: string | null;
   checking: boolean;
-  downloading: boolean;
+  status: UpdateStatus;
   downloadProgress: number;
   error: string | null;
 };
@@ -29,14 +32,55 @@ export function useUpdateChecker() {
     currentVersion: '',
     changelog: null,
     checking: false,
-    downloading: false,
+    status: 'idle',
     downloadProgress: 0,
     error: null,
   });
   const [dismissed, setDismissed] = useState(false);
+  const installRef = useRef<() => Promise<void>>();
+
+  const doInstall = useCallback(async () => {
+    setState((prev) => ({ ...prev, status: 'downloading', downloadProgress: 0, error: null }));
+
+    const unlisten = await listen<{ downloaded: number; total: number; status?: string }>(
+      'update-progress',
+      (event) => {
+        const { downloaded, total, status } = event.payload;
+        if (status === 'installing') {
+          setState((prev) => ({ ...prev, status: 'installing', downloadProgress: 100 }));
+        } else if (status === 'installed') {
+          setState((prev) => ({ ...prev, status: 'restart_needed', downloadProgress: 100 }));
+        } else if (status === 'downloading' && total > 0) {
+          const progress = Math.round((downloaded / total) * 100);
+          setState((prev) => ({ ...prev, downloadProgress: progress }));
+        }
+      }
+    );
+
+    try {
+      const info = await invoke<UpdateInfo>('check_for_update');
+      if (!info.download_url) {
+        throw new Error('Download URL not available');
+      }
+
+      await invoke<string>('download_and_install_update', { url: info.download_url });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      setState((prev) => ({
+        ...prev,
+        status: 'error',
+        downloadProgress: 0,
+        error: message,
+      }));
+    } finally {
+      unlisten();
+    }
+  }, []);
+
+  installRef.current = doInstall;
 
   const checkForUpdate = useCallback(async (showNoUpdateToast = false) => {
-    setState((prev) => ({ ...prev, checking: true, error: null }));
+    setState((prev) => ({ ...prev, checking: true, status: 'idle', error: null }));
 
     try {
       const info = await invoke<UpdateInfo>('check_for_update');
@@ -48,17 +92,23 @@ export function useUpdateChecker() {
           currentVersion: info.current_version,
           changelog: info.body,
           checking: false,
-          downloading: false,
+          status: 'idle',
           downloadProgress: 0,
           error: null,
         });
         setDismissed(false);
+
+        // Auto-start download
+        setTimeout(() => {
+          installRef.current?.();
+        }, 500);
       } else {
         setState((prev) => ({
           ...prev,
           currentVersion: info.current_version,
           hasUpdate: false,
           checking: false,
+          status: 'idle',
         }));
 
         if (showNoUpdateToast) {
@@ -74,6 +124,7 @@ export function useUpdateChecker() {
       setState((prev) => ({
         ...prev,
         checking: false,
+        status: 'error',
         error: message,
       }));
 
@@ -96,55 +147,8 @@ export function useUpdateChecker() {
     setDismissed(true);
   }, []);
 
-  const installUpdate = useCallback(async () => {
-    setState((prev) => ({ ...prev, downloading: true, downloadProgress: 0, error: null }));
-
-    // Listen for progress events
-    const unlisten = await listen<{ downloaded: number; total: number; status?: string }>(
-      'update-progress',
-      (event) => {
-        const { downloaded, total, status } = event.payload;
-        if (status === 'installing') {
-          setState((prev) => ({ ...prev, downloadProgress: 100 }));
-        } else if (total > 0) {
-          const progress = Math.round((downloaded / total) * 100);
-          setState((prev) => ({ ...prev, downloadProgress: progress }));
-        }
-      }
-    );
-
-    try {
-      const info = await invoke<UpdateInfo>('check_for_update');
-      if (!info.download_url) {
-        throw new Error('Download URL not available');
-      }
-
-      await invoke<string>('download_and_install_update', { url: info.download_url });
-
-      const { toast } = await import('sonner');
-      const { RotateCw } = await import('lucide-react');
-      toast.success('Обновление загружено. Установите обновление и перезапустите приложение.', {
-        icon: <RotateCw className="text-green-500 pe-1" />,
-        duration: 10000,
-      });
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      setState((prev) => ({
-        ...prev,
-        downloading: false,
-        downloadProgress: 0,
-        error: message,
-      }));
-
-      const { toast } = await import('sonner');
-      const { CircleX } = await import('lucide-react');
-      toast.error('Не удалось загрузить обновление', {
-        icon: <CircleX className="text-red-500 pe-1" />,
-      });
-    } finally {
-      unlisten();
-      setState((prev) => ({ ...prev, hasUpdate: false, downloading: false, downloadProgress: 0 }));
-    }
+  const restartApp = useCallback(async () => {
+    await relaunch();
   }, []);
 
   return {
@@ -153,11 +157,12 @@ export function useUpdateChecker() {
     currentVersion: state.currentVersion,
     changelog: state.changelog,
     checking: state.checking,
-    downloading: state.downloading,
+    status: state.status,
     downloadProgress: state.downloadProgress,
     error: state.error,
     dismissUpdate,
-    installUpdate,
+    installUpdate: doInstall,
+    restartApp,
     checkForUpdate,
   };
 }

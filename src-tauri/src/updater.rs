@@ -132,7 +132,6 @@ pub async fn download_and_install_update(app: AppHandle, url: String) -> Result<
 
     let total_size = response.content_length().unwrap_or(0);
 
-    // Determine file extension from URL
     let file_name = url
         .rsplit('/')
         .next()
@@ -142,7 +141,6 @@ pub async fn download_and_install_update(app: AppHandle, url: String) -> Result<
     let temp_dir = std::env::temp_dir();
     let file_path = temp_dir.join(&file_name);
 
-    // Download with progress
     let mut file = std::fs::File::create(&file_path)
         .map_err(|e| format!("Failed to create temp file: {}", e))?;
 
@@ -163,43 +161,93 @@ pub async fn download_and_install_update(app: AppHandle, url: String) -> Result<
             serde_json::json!({
                 "downloaded": downloaded,
                 "total": total_size,
+                "status": "downloading",
             }),
         );
     }
 
     drop(file);
 
-    // Run the installer
     let _ = app.emit("update-progress", serde_json::json!({
         "downloaded": total_size,
         "total": total_size,
         "status": "installing",
     }));
 
+    // Get current exe directory for silent install path
+    let current_exe = std::env::current_exe()
+        .map_err(|e| format!("Failed to get current exe path: {}", e))?;
+    let install_dir = current_exe.parent()
+        .ok_or("Failed to get install directory")?;
+
     #[cfg(target_os = "windows")]
     {
-        std::process::Command::new(&file_path)
-            .spawn()
-            .map_err(|e| format!("Failed to launch installer: {}", e))?;
+        let status = std::process::Command::new(&file_path)
+            .args(["/S", &format!("/D={}", install_dir.to_string_lossy())])
+            .status()
+            .map_err(|e| format!("Failed to run installer: {}", e))?;
+
+        if !status.success() {
+            return Err(format!("Installer exited with code: {}", status.code().unwrap_or(-1)));
+        }
     }
 
     #[cfg(target_os = "macos")]
     {
-        std::process::Command::new("open")
-            .arg(&file_path)
-            .spawn()
-            .map_err(|e| format!("Failed to open installer: {}", e))?;
+        // For macOS DMG: mount, copy .app, unmount
+        let mount_output = std::process::Command::new("hdiutil")
+            .args(["attach", file_path.to_str().unwrap_or(""), "-nobrowse", "-quiet"])
+            .output()
+            .map_err(|e| format!("Failed to mount DMG: {}", e))?;
+
+        let mount_point = String::from_utf8_lossy(&mount_output.stdout).trim().to_string();
+
+        // Find .app in mounted volume
+        let entries: Vec<_> = std::fs::read_dir(&mount_point)
+            .map_err(|e| format!("Failed to read DMG: {}", e))?
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().extension().map(|ext| ext == "app").unwrap_or(false))
+            .collect();
+
+        if let Some(app_entry) = entries.first() {
+            let app_name = app_entry.file_name();
+            let dest = install_dir.join(&app_name);
+            let _ = std::fs::remove_dir_all(&dest);
+            std::fs::copy(app_entry.path(), &dest)
+                .map_err(|e| format!("Failed to copy app: {}", e))?;
+        }
+
+        let _ = std::process::Command::new("hdiutil")
+            .args(["detach", &mount_point, "-quiet"])
+            .output();
     }
 
     #[cfg(target_os = "linux")]
     {
-        std::process::Command::new("xdg-open")
-            .arg(&file_path)
-            .spawn()
-            .map_err(|e| format!("Failed to open installer: {}", e))?;
+        // For .deb packages
+        if file_name.ends_with(".deb") {
+            let status = std::process::Command::new("pkexec")
+                .args(["dpkg", "-i", file_path.to_str().unwrap_or("")])
+                .status()
+                .map_err(|e| format!("Failed to install deb: {}", e))?;
+            if !status.success() {
+                return Err(format!("dpkg exited with code: {}", status.code().unwrap_or(-1)));
+            }
+        } else {
+            std::process::Command::new(&file_path)
+                .spawn()
+                .map_err(|e| format!("Failed to launch installer: {}", e))?;
+        }
     }
 
-    Ok(file_path.to_string_lossy().to_string())
+    let _ = app.emit("update-progress", serde_json::json!({
+        "status": "installed",
+    }));
+
+    // Clean up temp file
+    let _ = std::fs::remove_file(&file_path);
+
+    Ok("Update installed successfully".to_string())
 }
 
 fn find_download_url(release: &serde_json::Value) -> Option<String> {

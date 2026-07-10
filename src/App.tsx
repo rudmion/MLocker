@@ -14,7 +14,7 @@ import { SettingsDialog } from '@/components/settings/SettingsDialog';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useMasterPasswordAttempts } from '@/hooks/useMasterPasswordAttempts';
 import { useUpdateChecker } from '@/hooks/useUpdateChecker';
-import { UpdateDialog } from '@/components/update/UpdateDialog';
+import { UpdateBar } from '@/components/update/UpdateBar';
 
 function App() {
   const loadData = useStore((s) => s.loadData);
@@ -30,10 +30,11 @@ function App() {
     currentVersion,
     changelog,
     checking,
-    downloading,
+    status,
     downloadProgress,
     dismissUpdate,
     installUpdate,
+    restartApp,
     checkForUpdate,
   } = useUpdateChecker();
 
@@ -82,14 +83,13 @@ function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <Toaster />
-      {hasUpdate && (
-        <UpdateDialog
+      {(hasUpdate || status === 'downloading' || status === 'installing' || status === 'restart_needed' || status === 'error') && (
+        <UpdateBar
           latestVersion={latestVersion}
-          currentVersion={currentVersion}
-          changelog={changelog}
-          downloading={downloading}
+          status={status}
           downloadProgress={downloadProgress}
           onInstall={installUpdate}
+          onRestart={restartApp}
           onDismiss={dismissUpdate}
         />
       )}
