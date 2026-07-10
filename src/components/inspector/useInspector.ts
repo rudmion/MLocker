@@ -13,6 +13,8 @@ type InspectorFormState = {
   password: string;
   securityLevel: number;
   customFields: CustomField[];
+  iconUrl: string;
+  passwordUpdatedAt: string;
 };
 
 type ValidationErrors = {
@@ -64,6 +66,8 @@ export function useInspector() {
       password: entry.password,
       securityLevel: entry.securityLevel,
       customFields: entry.customFields,
+      iconUrl: entry.iconUrl ?? '',
+      passwordUpdatedAt: entry.passwordUpdatedAt,
     };
 
     setFormData(initial);
@@ -118,6 +122,8 @@ export function useInspector() {
       password: formData.password,
       securityLevel: formData.securityLevel,
       customFields: validCustomFields,
+      iconUrl: formData.iconUrl,
+      passwordUpdatedAt: formData.passwordUpdatedAt,
     });
 
     if (droppedCount > 0) {
@@ -158,6 +164,7 @@ export function useInspector() {
         key: '',
         label: '',
         value: '',
+        hidden: false,
       };
 
       return {

@@ -1,4 +1,4 @@
-import { Copy, Pencil, Trash2, Check } from 'lucide-react';
+import { Copy, Eye, EyeOff, Pencil, Trash2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
 import {
@@ -10,13 +10,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useState } from 'react';
 import { copyToClipboard } from '@/utils/clipboard';
-
-interface CustomField {
-  key: string;
-  id: string;
-  label: string;
-  value: string;
-}
+import type { CustomField } from '@/components/types/data-types';
 
 interface Props {
   fields: CustomField[];
@@ -26,7 +20,11 @@ interface Props {
 export function CustomFields({ fields, onChange }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const updateField = (id: string, key: keyof CustomField, value: string) => {
+  const updateField = (
+    id: string,
+    key: keyof CustomField,
+    value: CustomField[keyof CustomField],
+  ) => {
     onChange(
       fields.map((field) =>
         field.id === id ? { ...field, [key]: value } : field,
@@ -80,6 +78,7 @@ export function CustomFields({ fields, onChange }: Props) {
                   onChange={(e) =>
                     updateField(field.id, 'value', e.target.value)
                   }
+                  type={field.hidden ? 'password' : 'text'}
                   placeholder="Введите значение"
                   className={
                     showValueError
@@ -90,6 +89,23 @@ export function CustomFields({ fields, onChange }: Props) {
 
                 {field.value && (
                   <InputGroupAddon align="inline-end">
+                    <InputGroupButton
+                      aria-label={
+                        field.hidden ? 'Показать значение' : 'Скрыть значение'
+                      }
+                      title={field.hidden ? 'Показать значение' : 'Приватность'}
+                      size="icon-xs"
+                      onClick={() =>
+                        updateField(field.id, 'hidden', !field.hidden)
+                      }
+                    >
+                      {field.hidden ? (
+                        <Eye className="h-4 w-4" />
+                      ) : (
+                        <EyeOff className="h-4 w-4" />
+                      )}
+                    </InputGroupButton>
+
                     <InputGroupButton
                       aria-label="Copy"
                       title="Copy"

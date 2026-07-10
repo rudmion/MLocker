@@ -57,7 +57,7 @@ export function Inspector() {
 
       <InspectorHeader
         title={formData.title}
-        iconUrl={entry.iconUrl}
+        iconUrl={formData.iconUrl}
         onDelete={() => {
           handleDelete();
           handleClose();

@@ -3,6 +3,7 @@ export type CustomField = {
   key: string;
   label: string;
   value: string;
+  hidden: boolean;
 };
 
 export type Entry = {

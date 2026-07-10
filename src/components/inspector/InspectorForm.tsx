@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
   Field,
@@ -19,6 +19,8 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
+  Loader2,
+  Check,
   RefreshCcw,
   ShieldAlert,
   ShieldCheck,
@@ -31,6 +33,8 @@ import { Button } from '../ui/button';
 
 import { getPasswordSecurityLevel } from '@/utils/passwordSecurityLevel';
 import { copyToClipboard } from '@/utils/clipboard';
+import { isValidUrl } from '@/utils/validUrl';
+import { invoke } from '@tauri-apps/api/core';
 
 type InspectorFormState = {
   title: string;
@@ -39,6 +43,8 @@ type InspectorFormState = {
   password: string;
   securityLevel: number;
   customFields: CustomField[];
+  iconUrl: string;
+  passwordUpdatedAt: string;
 };
 
 type ValidationErrors = {
@@ -54,8 +60,17 @@ interface Props {
   clearError: (field: keyof ValidationErrors) => void;
 }
 
-export function InspectorForm({ formData, setFormData, errors, clearError }: Props) {
+export function InspectorForm({
+  formData,
+  setFormData,
+  errors,
+  clearError,
+}: Props) {
   const [showPassword, setShowPassword] = useState(false);
+  const [faviconStatus, setFaviconStatus] = useState<
+    'idle' | 'downloading' | 'done' | 'error'
+  >('idle');
+  const abortRef = useRef<AbortController | null>(null);
 
   if (!formData) return null;
 
@@ -72,6 +87,39 @@ export function InspectorForm({ formData, setFormData, errors, clearError }: Pro
       };
     });
   }, [formData.password, setFormData]);
+
+  // Favicon download when URL changes
+  useEffect(() => {
+    if (!formData.url || !isValidUrl(formData.url)) {
+      setFaviconStatus('idle');
+      return;
+    }
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setFaviconStatus('downloading');
+
+    invoke<string>('download_favicon', { url: formData.url })
+      .then((path) => {
+        if (!controller.signal.aborted) {
+          setFaviconStatus('done');
+          setFormData((prev) => {
+            if (!prev) return prev;
+            return { ...prev, iconUrl: path };
+          });
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setFaviconStatus('error');
+        }
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [formData.url, setFormData]);
 
   const updateField = <K extends keyof InspectorFormState>(
     key: K,
@@ -139,6 +187,15 @@ export function InspectorForm({ formData, setFormData, errors, clearError }: Pro
 
             {formData.url && /^https?:\/\//.test(formData.url) && (
               <InputGroupAddon align="inline-end">
+                {faviconStatus === 'downloading' && (
+                  <Loader2
+                    size={14}
+                    className="animate-spin text-muted-foreground"
+                  />
+                )}
+                {faviconStatus === 'done' && (
+                  <Check size={14} className="text-green-500" />
+                )}
                 <InputGroupButton asChild size="icon-xs">
                   <a href={formData.url} target="_blank" rel="noreferrer">
                     <ExternalLink className="h-4 w-4" />
@@ -181,8 +238,23 @@ export function InspectorForm({ formData, setFormData, errors, clearError }: Pro
         {/* PASSWORD */}
         <div className="flex items-end gap-3">
           <Field className="flex-1">
-            <FieldLabel>
-              Пароль <span className="text-destructive">*</span>
+            <FieldLabel className="flex items-center gap-3">
+              <div>
+                Пароль <span className="text-destructive">*</span>
+              </div>
+              <div>
+                {formData.passwordUpdatedAt && (
+                  <p className="text-xs text-muted-foreground">
+                    Последнее изменение:
+                    <span className="ms-1">
+                      {new Date(formData.passwordUpdatedAt).toLocaleDateString(
+                        'ru-RU',
+                        { day: '2-digit', month: '2-digit', year: 'numeric' },
+                      )}
+                    </span>
+                  </p>
+                )}
+              </div>
             </FieldLabel>
 
             <InputGroup className="gap-2 ps-2">
