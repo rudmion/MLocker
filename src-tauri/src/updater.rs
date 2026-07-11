@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 use tauri::Emitter;
+use tauri::Manager;
 
 use std::time::Duration;
 
@@ -225,6 +226,20 @@ pub async fn download_update(app: AppHandle, url: String) -> Result<String, Stri
 }
 
 #[tauri::command]
+pub async fn get_install_path(app: AppHandle) -> Result<String, String> {
+    let path = app
+        .path()
+        .resource_dir()
+        .map_err(|e| format!("Failed to get install path: {}", e))?;
+    Ok(path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub fn restart_app(app: AppHandle) -> Result<(), String> {
+    app.restart();
+}
+
+#[tauri::command]
 pub async fn install_downloaded_update(app: AppHandle, file_path: String) -> Result<(), String> {
     let file_path = std::path::PathBuf::from(&file_path);
 
@@ -232,40 +247,118 @@ pub async fn install_downloaded_update(app: AppHandle, file_path: String) -> Res
         return Err("Installer file not found".to_string());
     }
 
+    // Get install path for display
+    let install_path = app
+        .path()
+        .resource_dir()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|_| "Unknown".to_string());
+
+    // Emit installing status
+    let _ = app.emit(
+        "update-progress",
+        serde_json::json!({
+            "status": "installing",
+            "downloaded": 0,
+            "total": 0,
+            "installPath": install_path,
+        }),
+    );
+
     #[cfg(target_os = "windows")]
     {
-        std::process::Command::new(&file_path)
+        let mut child = std::process::Command::new(&file_path)
             .arg("/S")
             .spawn()
             .map_err(|e| format!("Failed to launch installer: {}", e))?;
 
-        // Give installer time to start, then close app so NSIS can overwrite files
-        std::thread::sleep(Duration::from_secs(2));
-        app.exit(0);
+        // Simulate progress while NSIS runs in background
+        let app_progress = app.clone();
+        std::thread::spawn(move || {
+            let mut progress = 0u32;
+            loop {
+                match child.try_wait() {
+                    Ok(Some(_)) => {
+                        // Installer finished
+                        let _ = app_progress.emit(
+                            "update-status",
+                            serde_json::json!({ "status": "installed" }),
+                        );
+                        break;
+                    }
+                    Ok(None) => {
+                        progress = (progress + 5).min(95);
+                        let _ = app_progress.emit(
+                            "update-progress",
+                            serde_json::json!({
+                                "status": "installing",
+                                "downloaded": progress,
+                                "total": 100,
+                                "installPath": install_path,
+                            }),
+                        );
+                        std::thread::sleep(Duration::from_secs(1));
+                    }
+                    Err(_) => {
+                        let _ = app_progress.emit(
+                            "update-status",
+                            serde_json::json!({ "status": "installed" }),
+                        );
+                        break;
+                    }
+                }
+            }
+        });
     }
 
     #[cfg(target_os = "macos")]
     {
-        // Open DMG — user will drag app to Applications
-        std::process::Command::new("open")
+        let mut child = std::process::Command::new("open")
             .arg(&file_path)
             .spawn()
             .map_err(|e| format!("Failed to open installer: {}", e))?;
 
-        let _ = app.emit(
-            "update-instruction",
-            serde_json::json!({
-                "message": "Open the DMG and drag MLocker to Applications"
-            }),
-        );
-        app.exit(0);
+        let app_progress = app.clone();
+        let install_path_clone = install_path.clone();
+        std::thread::spawn(move || {
+            loop {
+                match child.try_wait() {
+                    Ok(Some(_)) => {
+                        let _ = app_progress.emit(
+                            "update-status",
+                            serde_json::json!({ "status": "installed" }),
+                        );
+                        break;
+                    }
+                    Ok(None) => {
+                        let _ = app_progress.emit(
+                            "update-progress",
+                            serde_json::json!({
+                                "status": "installing",
+                                "downloaded": 50,
+                                "total": 100,
+                                "installPath": install_path_clone,
+                            }),
+                        );
+                        std::thread::sleep(Duration::from_secs(2));
+                    }
+                    Err(_) => {
+                        let _ = app_progress.emit(
+                            "update-status",
+                            serde_json::json!({ "status": "installed" }),
+                        );
+                        break;
+                    }
+                }
+            }
+        });
     }
 
     #[cfg(target_os = "linux")]
     {
         let path_str = file_path.to_string_lossy().to_string();
 
-        if path_str.ends_with(".AppImage") {
+        let mut child = if path_str.ends_with(".AppImage") {
             std::process::Command::new("chmod")
                 .arg("+x")
                 .arg(&file_path)
@@ -274,14 +367,47 @@ pub async fn install_downloaded_update(app: AppHandle, file_path: String) -> Res
 
             std::process::Command::new(&file_path)
                 .spawn()
-                .map_err(|e| format!("Failed to run AppImage: {}", e))?;
+                .map_err(|e| format!("Failed to run AppImage: {}", e))?
         } else {
             std::process::Command::new("xdg-open")
                 .arg(&file_path)
                 .spawn()
-                .map_err(|e| format!("Failed to open installer: {}", e))?;
-        }
-        app.exit(0);
+                .map_err(|e| format!("Failed to open installer: {}", e))?
+        };
+
+        let app_progress = app.clone();
+        std::thread::spawn(move || {
+            loop {
+                match child.try_wait() {
+                    Ok(Some(_)) => {
+                        let _ = app_progress.emit(
+                            "update-status",
+                            serde_json::json!({ "status": "installed" }),
+                        );
+                        break;
+                    }
+                    Ok(None) => {
+                        let _ = app_progress.emit(
+                            "update-progress",
+                            serde_json::json!({
+                                "status": "installing",
+                                "downloaded": 50,
+                                "total": 100,
+                                "installPath": install_path,
+                            }),
+                        );
+                        std::thread::sleep(Duration::from_secs(2));
+                    }
+                    Err(_) => {
+                        let _ = app_progress.emit(
+                            "update-status",
+                            serde_json::json!({ "status": "installed" }),
+                        );
+                        break;
+                    }
+                }
+            }
+        });
     }
 
     #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]

@@ -20,7 +20,10 @@ type UpdateState = {
   checking: boolean;
   downloading: boolean;
   downloadProgress: number;
-  updateInstalled: boolean;
+  installing: boolean;
+  installProgress: number;
+  installPath: string;
+  needsRestart: boolean;
   error: string | null;
 };
 
@@ -34,7 +37,10 @@ export function useUpdateChecker() {
     checking: false,
     downloading: false,
     downloadProgress: 0,
-    updateInstalled: false,
+    installing: false,
+    installProgress: 0,
+    installPath: '',
+    needsRestart: false,
     error: null,
   });
   const [dismissed, setDismissed] = useState(false);
@@ -58,7 +64,10 @@ export function useUpdateChecker() {
           checking: false,
           downloading: false,
           downloadProgress: 0,
-          updateInstalled: false,
+          installing: false,
+          installProgress: 0,
+          installPath: '',
+          needsRestart: false,
           error: null,
         });
         setDismissed(false);
@@ -99,7 +108,6 @@ export function useUpdateChecker() {
   useEffect(() => {
     checkForUpdate(false);
 
-    // Check for updates every 4 hours
     const interval = setInterval(() => {
       checkForUpdate(false);
     }, 4 * 60 * 60 * 1000);
@@ -113,21 +121,44 @@ export function useUpdateChecker() {
   }, []);
 
   const installUpdate = useCallback(async () => {
-    setState((prev) => ({ ...prev, downloading: true, downloadProgress: 0, error: null }));
+    setState((prev) => ({
+      ...prev,
+      downloading: true,
+      downloadProgress: 0,
+      error: null,
+    }));
 
-    // Listen for progress events
-    const unlisten = await listen<{ downloaded: number; total: number; status?: string }>(
-      'update-progress',
-      (event) => {
-        const { downloaded, total, status } = event.payload;
-        if (status === 'installing') {
-          setState((prev) => ({ ...prev, downloadProgress: 100 }));
-        } else if (total > 0) {
-          const progress = Math.round((downloaded / total) * 100);
-          setState((prev) => ({ ...prev, downloadProgress: progress }));
-        }
+    const unlistenProgress = await listen<{
+      downloaded: number;
+      total: number;
+      status?: string;
+      installPath?: string;
+    }>('update-progress', (event) => {
+      const { downloaded, total, status, installPath } = event.payload;
+      if (status === 'installing') {
+        setState((prev) => ({
+          ...prev,
+          downloading: false,
+          installing: true,
+          installProgress: total > 0 ? Math.round((downloaded / total) * 100) : prev.installProgress,
+          installPath: installPath || prev.installPath,
+        }));
+      } else if (total > 0) {
+        const progress = Math.round((downloaded / total) * 100);
+        setState((prev) => ({ ...prev, downloadProgress: progress }));
       }
-    );
+    });
+
+    const unlistenStatus = await listen<{ status: string }>('update-status', (event) => {
+      if (event.payload.status === 'installed') {
+        setState((prev) => ({
+          ...prev,
+          installing: false,
+          installProgress: 100,
+          needsRestart: true,
+        }));
+      }
+    });
 
     try {
       const url = stateRef.current.downloadUrl;
@@ -135,24 +166,15 @@ export function useUpdateChecker() {
         throw new Error('Download URL not available');
       }
 
-      const filePath = await invoke<string>('download_update', { url });
-
-      setState((prev) => ({
-        ...prev,
-        hasUpdate: false,
-        downloading: false,
-        downloadProgress: 0,
-        updateInstalled: true,
-      }));
-
-      // Auto-launch installer and close app
-      await invoke('install_downloaded_update', { filePath });
+      await invoke<string>('download_update', { url });
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       setState((prev) => ({
         ...prev,
         downloading: false,
         downloadProgress: 0,
+        installing: false,
+        installProgress: 0,
         error: message,
       }));
 
@@ -162,7 +184,23 @@ export function useUpdateChecker() {
         icon: <CircleX className="text-red-500 pe-1" />,
       });
     } finally {
-      unlisten();
+      unlistenProgress();
+      unlistenStatus();
+    }
+  }, []);
+
+  const restartApp = useCallback(async () => {
+    try {
+      await invoke('restart_app');
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      setState((prev) => ({ ...prev, error: message }));
+
+      const { toast } = await import('sonner');
+      const { CircleX } = await import('lucide-react');
+      toast.error('Не удалось перезапустить приложение', {
+        icon: <CircleX className="text-red-500 pe-1" />,
+      });
     }
   }, []);
 
@@ -174,10 +212,14 @@ export function useUpdateChecker() {
     checking: state.checking,
     downloading: state.downloading,
     downloadProgress: state.downloadProgress,
-    updateInstalled: state.updateInstalled,
+    installing: state.installing,
+    installProgress: state.installProgress,
+    installPath: state.installPath,
+    needsRestart: state.needsRestart,
     error: state.error,
     dismissUpdate,
     installUpdate,
+    restartApp,
     checkForUpdate,
   };
 }

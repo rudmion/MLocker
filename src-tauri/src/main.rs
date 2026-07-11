@@ -550,7 +550,9 @@ fn main() {
             favicon::download_favicon,
             updater::check_for_update,
             updater::download_update,
-            updater::install_downloaded_update
+            updater::install_downloaded_update,
+            updater::restart_app,
+            updater::get_install_path
         ])
         .run(tauri::generate_context!())
         .expect("error while running app");
