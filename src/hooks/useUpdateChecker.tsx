@@ -193,7 +193,8 @@ export function useUpdateChecker() {
         throw new Error('Download URL not available');
       }
 
-      await invoke<string>('download_update', { url });
+      const filePath = await invoke<string>('download_update', { url });
+      await invoke('install_downloaded_update', { filePath });
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       setState((prev) => ({
