@@ -238,6 +238,10 @@ pub async fn install_downloaded_update(app: AppHandle) -> Result<(), String> {
     // Cleanup
     let _ = std::fs::remove_file(&pending_file);
 
+    // Give the installer process time to start, then exit so it can overwrite files
+    std::thread::sleep(std::time::Duration::from_millis(500));
+    app.exit(0);
+
     Ok(())
 }
 
