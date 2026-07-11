@@ -54,6 +54,9 @@ export function CommandMenu({ open, onOpenChange }: Props) {
                             src={iconSrc}
                             alt=""
                             className="w-5 h-5 object-contain"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/material-icon-theme_folder-docs.svg';
+                            }}
                           />
                           <span className="w-100 truncate whitespace-nowrap overflow-hidden">
                             {record.title}

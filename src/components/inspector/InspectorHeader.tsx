@@ -24,6 +24,9 @@ export function InspectorHeader({ title, iconUrl, onDelete, onClose }: Props) {
         }
         className="w-[20px] h-[20px] rounded-sm"
         alt="Logo"
+        onError={(e) => {
+          (e.target as HTMLImageElement).src = '/material-icon-theme_folder-docs.svg';
+        }}
       />
 
       <p className="font-medium max-w-[200px] truncate whitespace-nowrap overflow-hidden">

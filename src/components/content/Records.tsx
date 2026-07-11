@@ -160,6 +160,9 @@ export function Records() {
                     src={faviconSrc}
                     alt="Logo"
                     className="w-full h-full object-contain"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = '/material-icon-theme_folder-docs.svg';
+                    }}
                   />
                 </ItemMedia>
 
