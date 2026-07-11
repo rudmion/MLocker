@@ -2,9 +2,9 @@
 
 mod favicon;
 mod crypto;
-mod updater;
 
 use tauri::{Manager, State};
+use tauri_plugin_updater::UpdaterExt;
 use std::sync::Mutex;
 use std::path::PathBuf;
 
@@ -516,6 +516,40 @@ fn clear_master_password(state: State<AppState>) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+async fn check_for_update(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
+    let current_version = app.package_info().version.to_string();
+
+    match app.updater()?.check().await {
+        Ok(Some(update)) => Ok(serde_json::json!({
+            "has_update": true,
+            "current_version": current_version,
+            "latest_version": update.version,
+            "body": update.body,
+        })),
+        Ok(None) => Ok(serde_json::json!({
+            "has_update": false,
+            "current_version": current_version,
+            "latest_version": current_version,
+            "body": null,
+        })),
+        Err(e) => Err(format!("Failed to check for updates: {}", e)),
+    }
+}
+
+#[tauri::command]
+async fn install_update(app: tauri::AppHandle) -> Result<(), String> {
+    let update = app.updater()?.check().await
+        .map_err(|e| format!("Failed to check for updates: {}", e))?
+        .ok_or("No update available")?;
+
+    update.download_and_install(|_, _| {}, || {}).await
+        .map_err(|e| format!("Failed to install update: {}", e))?;
+
+    app.restart();
+    Ok(())
+}
+
 fn main() {
     let mut path = dirs::data_dir().unwrap();
     path.push("my-password-manager");
@@ -529,6 +563,7 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 window.set_focus().ok();
@@ -549,9 +584,8 @@ fn main() {
             reset_master_password,
             clear_master_password,
             favicon::download_favicon,
-            updater::check_for_update,
-            updater::download_update,
-            updater::install_downloaded_update
+            check_for_update,
+            install_update
         ])
         .run(tauri::generate_context!())
         .expect("error while running app");

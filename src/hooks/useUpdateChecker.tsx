@@ -1,15 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { invoke } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
-
-type UpdateInfo = {
-  has_update: boolean;
-  current_version: string;
-  latest_version: string;
-  body: string | null;
-  html_url: string | null;
-  download_url: string | null;
-};
+import { check } from '@tauri-apps/plugin-updater';
+import { relaunch } from '@tauri-apps/plugin-process';
 
 type UpdateState = {
   hasUpdate: boolean;
@@ -41,14 +32,14 @@ export function useUpdateChecker() {
     setState((prev) => ({ ...prev, checking: true, error: null }));
 
     try {
-      const info = await invoke<UpdateInfo>('check_for_update');
+      const update = await check();
 
-      if (info.has_update) {
+      if (update) {
         setState({
           hasUpdate: true,
-          latestVersion: info.latest_version,
-          currentVersion: info.current_version,
-          changelog: info.body,
+          latestVersion: update.version,
+          currentVersion: update.currentVersion,
+          changelog: update.body ?? null,
           checking: false,
           downloading: false,
           downloadProgress: 0,
@@ -59,7 +50,6 @@ export function useUpdateChecker() {
       } else {
         setState((prev) => ({
           ...prev,
-          currentVersion: info.current_version,
           hasUpdate: false,
           checking: false,
         }));
@@ -100,33 +90,34 @@ export function useUpdateChecker() {
   }, []);
 
   const restartWithInstall = useCallback(async () => {
-    await invoke('install_downloaded_update');
+    await relaunch();
   }, []);
 
   const installUpdate = useCallback(async () => {
     setState((prev) => ({ ...prev, downloading: true, downloadProgress: 0, error: null }));
 
-    // Listen for progress events
-    const unlisten = await listen<{ downloaded: number; total: number; status?: string }>(
-      'update-progress',
-      (event) => {
-        const { downloaded, total, status } = event.payload;
-        if (status === 'installing') {
-          setState((prev) => ({ ...prev, downloadProgress: 100 }));
-        } else if (total > 0) {
-          const progress = Math.round((downloaded / total) * 100);
-          setState((prev) => ({ ...prev, downloadProgress: progress }));
-        }
-      }
-    );
-
     try {
-      const info = await invoke<UpdateInfo>('check_for_update');
-      if (!info.download_url) {
-        throw new Error('Download URL not available');
+      const update = await check();
+      if (!update) {
+        throw new Error('Update no longer available');
       }
 
-      await invoke<string>('download_update', { url: info.download_url });
+      await update.downloadAndInstall((event) => {
+        switch (event.event) {
+          case 'Started':
+            if (event.data.contentLength) {
+              setState((prev) => ({ ...prev, downloadProgress: 0 }));
+            }
+            break;
+          case 'Progress':
+            // We don't have total from the event, show indeterminate
+            setState((prev) => ({ ...prev, downloadProgress: -1 }));
+            break;
+          case 'Finished':
+            setState((prev) => ({ ...prev, downloadProgress: 100 }));
+            break;
+        }
+      });
 
       setState((prev) => ({
         ...prev,
@@ -149,8 +140,6 @@ export function useUpdateChecker() {
       toast.error('Не удалось загрузить обновление', {
         icon: <CircleX className="text-red-500 pe-1" />,
       });
-    } finally {
-      unlisten();
     }
   }, []);
 
