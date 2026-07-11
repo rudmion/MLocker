@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 use tauri::Emitter;
-use tauri::Manager;
+
+use std::time::Duration;
 
 const REPO: &str = "rudmion/MLocker";
 
@@ -15,14 +16,20 @@ pub struct UpdateInfo {
     pub download_url: Option<String>,
 }
 
+fn build_client() -> Result<reqwest::Client, String> {
+    reqwest::Client::builder()
+        .user_agent("MLocker-Updater")
+        .timeout(Duration::from_secs(15))
+        .connect_timeout(Duration::from_secs(5))
+        .build()
+        .map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 pub async fn check_for_update(app: AppHandle) -> Result<UpdateInfo, String> {
     let current_version = app.package_info().version.to_string();
 
-    let client = reqwest::Client::builder()
-        .user_agent("MLocker-Updater")
-        .build()
-        .map_err(|e| e.to_string())?;
+    let client = build_client()?;
 
     // Try releases first
     let release_url = format!("https://api.github.com/repos/{REPO}/releases/latest");
@@ -32,6 +39,10 @@ pub async fn check_for_update(app: AppHandle) -> Result<UpdateInfo, String> {
         .send()
         .await
         .map_err(|e| format!("Failed to check for updates: {}", e))?;
+
+    if response.status().as_u16() == 403 {
+        return Err("GitHub API rate limit exceeded. Try again later.".to_string());
+    }
 
     if response.status().is_success() {
         let release: serde_json::Value = response
@@ -44,6 +55,23 @@ pub async fn check_for_update(app: AppHandle) -> Result<UpdateInfo, String> {
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
+
+        let is_prerelease = release
+            .get("prerelease")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+
+        // Skip pre-release versions
+        if is_prerelease || tag_name.contains('-') {
+            return Ok(UpdateInfo {
+                has_update: false,
+                current_version: current_version.clone(),
+                latest_version: current_version,
+                body: None,
+                html_url: None,
+                download_url: None,
+            });
+        }
 
         let latest_version = tag_name.trim_start_matches('v').to_string();
         let has_update = compare_versions(&latest_version, &current_version);
@@ -74,6 +102,10 @@ pub async fn check_for_update(app: AppHandle) -> Result<UpdateInfo, String> {
         .await
         .map_err(|e| format!("Failed to check tags: {}", e))?;
 
+    if tags_response.status().as_u16() == 403 {
+        return Err("GitHub API rate limit exceeded. Try again later.".to_string());
+    }
+
     if tags_response.status().is_success() {
         let tags: Vec<serde_json::Value> = tags_response
             .json()
@@ -86,6 +118,18 @@ pub async fn check_for_update(app: AppHandle) -> Result<UpdateInfo, String> {
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string();
+
+            // Skip pre-release tags
+            if tag_name.contains('-') {
+                return Ok(UpdateInfo {
+                    has_update: false,
+                    current_version: current_version.clone(),
+                    latest_version: current_version,
+                    body: None,
+                    html_url: None,
+                    download_url: None,
+                });
+            }
 
             let latest_version = tag_name.trim_start_matches('v').to_string();
             let has_update = compare_versions(&latest_version, &current_version);
@@ -116,10 +160,7 @@ pub async fn check_for_update(app: AppHandle) -> Result<UpdateInfo, String> {
 
 #[tauri::command]
 pub async fn download_update(app: AppHandle, url: String) -> Result<String, String> {
-    let client = reqwest::Client::builder()
-        .user_agent("MLocker-Updater")
-        .build()
-        .map_err(|e| e.to_string())?;
+    let client = build_client()?;
 
     let response = client
         .get(&url)
@@ -168,75 +209,85 @@ pub async fn download_update(app: AppHandle, url: String) -> Result<String, Stri
 
     drop(file);
 
-    // Save path for later install
-    let pending_path = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
-    std::fs::create_dir_all(&pending_path)
-        .map_err(|e| format!("Failed to create app data dir: {}", e))?;
-    let pending_file = pending_path.join("pending_update.json");
-    std::fs::write(
-        &pending_file,
-        serde_json::json!({ "path": file_path.to_string_lossy().to_string() }).to_string(),
-    )
-    .map_err(|e| format!("Failed to save pending update: {}", e))?;
+    // Validate downloaded file
+    let file_metadata = std::fs::metadata(&file_path)
+        .map_err(|e| format!("Failed to check downloaded file: {}", e))?;
+    let file_size = file_metadata.len();
+    if file_size < 1024 {
+        let _ = std::fs::remove_file(&file_path);
+        return Err(format!(
+            "Downloaded file is too small ({} bytes) — likely corrupted",
+            file_size
+        ));
+    }
 
     Ok(file_path.to_string_lossy().to_string())
 }
 
 #[tauri::command]
-pub async fn install_downloaded_update(app: AppHandle) -> Result<(), String> {
-    let pending_path = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
-    let pending_file = pending_path.join("pending_update.json");
-
-    let content = std::fs::read_to_string(&pending_file)
-        .map_err(|e| format!("Failed to read pending update: {}", e))?;
-    let data: serde_json::Value =
-        serde_json::from_str(&content).map_err(|e| format!("Failed to parse pending update: {}", e))?;
-    let file_path = data["path"]
-        .as_str()
-        .ok_or("No pending update path")?;
-
-    let file_path = std::path::PathBuf::from(file_path);
+pub async fn install_downloaded_update(app: AppHandle, file_path: String) -> Result<(), String> {
+    let file_path = std::path::PathBuf::from(&file_path);
 
     if !file_path.exists() {
         return Err("Installer file not found".to_string());
     }
 
-    // Launch installer silently with /S
-    // NSIS remembers install path from initial installation (stored in Windows registry)
-    // No /D= flag needed — NSIS uses the remembered path
     #[cfg(target_os = "windows")]
     {
         std::process::Command::new(&file_path)
             .arg("/S")
             .spawn()
             .map_err(|e| format!("Failed to launch installer: {}", e))?;
+
+        // Give installer time to start, then close app so NSIS can overwrite files
+        std::thread::sleep(Duration::from_secs(2));
+        app.exit(0);
     }
 
     #[cfg(target_os = "macos")]
     {
+        // Open DMG — user will drag app to Applications
         std::process::Command::new("open")
-            .arg("-W")
             .arg(&file_path)
             .spawn()
             .map_err(|e| format!("Failed to open installer: {}", e))?;
+
+        let _ = app.emit(
+            "update-instruction",
+            serde_json::json!({
+                "message": "Open the DMG and drag MLocker to Applications"
+            }),
+        );
+        app.exit(0);
     }
 
     #[cfg(target_os = "linux")]
     {
-        std::process::Command::new("xdg-open")
-            .arg(&file_path)
-            .spawn()
-            .map_err(|e| format!("Failed to open installer: {}", e))?;
+        let path_str = file_path.to_string_lossy().to_string();
+
+        if path_str.ends_with(".AppImage") {
+            std::process::Command::new("chmod")
+                .arg("+x")
+                .arg(&file_path)
+                .spawn()
+                .map_err(|e| format!("Failed to chmod: {}", e))?;
+
+            std::process::Command::new(&file_path)
+                .spawn()
+                .map_err(|e| format!("Failed to run AppImage: {}", e))?;
+        } else {
+            std::process::Command::new("xdg-open")
+                .arg(&file_path)
+                .spawn()
+                .map_err(|e| format!("Failed to open installer: {}", e))?;
+        }
+        app.exit(0);
     }
 
-    // Cleanup
-    let _ = std::fs::remove_file(&pending_file);
+    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+    {
+        return Err("Unsupported platform for auto-install".to_string());
+    }
 
     Ok(())
 }
@@ -249,7 +300,7 @@ fn find_download_url(release: &serde_json::Value) -> Option<String> {
     #[cfg(target_os = "macos")]
     let patterns = [".dmg", ".app"];
     #[cfg(target_os = "linux")]
-    let patterns = [".deb", ".AppImage", ".rpm"];
+    let patterns = [".AppImage", ".deb", ".rpm"];
 
     #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
     let patterns: [&str; 0] = [];

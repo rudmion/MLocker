@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 
@@ -16,6 +16,7 @@ type UpdateState = {
   latestVersion: string;
   currentVersion: string;
   changelog: string | null;
+  downloadUrl: string | null;
   checking: boolean;
   downloading: boolean;
   downloadProgress: number;
@@ -29,6 +30,7 @@ export function useUpdateChecker() {
     latestVersion: '',
     currentVersion: '',
     changelog: null,
+    downloadUrl: null,
     checking: false,
     downloading: false,
     downloadProgress: 0,
@@ -36,6 +38,9 @@ export function useUpdateChecker() {
     error: null,
   });
   const [dismissed, setDismissed] = useState(false);
+
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   const checkForUpdate = useCallback(async (showNoUpdateToast = false) => {
     setState((prev) => ({ ...prev, checking: true, error: null }));
@@ -49,6 +54,7 @@ export function useUpdateChecker() {
           latestVersion: info.latest_version,
           currentVersion: info.current_version,
           changelog: info.body,
+          downloadUrl: info.download_url,
           checking: false,
           downloading: false,
           downloadProgress: 0,
@@ -92,15 +98,18 @@ export function useUpdateChecker() {
 
   useEffect(() => {
     checkForUpdate(false);
+
+    // Check for updates every 4 hours
+    const interval = setInterval(() => {
+      checkForUpdate(false);
+    }, 4 * 60 * 60 * 1000);
+
+    return () => clearInterval(interval);
   }, [checkForUpdate]);
 
   const dismissUpdate = useCallback(() => {
     setState((prev) => ({ ...prev, hasUpdate: false }));
     setDismissed(true);
-  }, []);
-
-  const restartWithInstall = useCallback(async () => {
-    await invoke('install_downloaded_update');
   }, []);
 
   const installUpdate = useCallback(async () => {
@@ -121,12 +130,12 @@ export function useUpdateChecker() {
     );
 
     try {
-      const info = await invoke<UpdateInfo>('check_for_update');
-      if (!info.download_url) {
+      const url = stateRef.current.downloadUrl;
+      if (!url) {
         throw new Error('Download URL not available');
       }
 
-      await invoke<string>('download_update', { url: info.download_url });
+      const filePath = await invoke<string>('download_update', { url });
 
       setState((prev) => ({
         ...prev,
@@ -135,6 +144,9 @@ export function useUpdateChecker() {
         downloadProgress: 0,
         updateInstalled: true,
       }));
+
+      // Auto-launch installer and close app
+      await invoke('install_downloaded_update', { filePath });
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       setState((prev) => ({
@@ -166,7 +178,6 @@ export function useUpdateChecker() {
     error: state.error,
     dismissUpdate,
     installUpdate,
-    restartWithInstall,
     checkForUpdate,
   };
 }
