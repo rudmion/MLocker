@@ -131,14 +131,11 @@ export function useUpdateChecker() {
   );
 
   useEffect(() => {
-    checkForUpdate(false);
-
-    const interval = setInterval(
-      () => {
-        checkForUpdate(false);
-      },
-      4 * 60 * 60 * 1000,
-    );
+    // Check once a day (24 hours), but NOT on app startup
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const interval = setInterval(() => {
+      checkForUpdate(false);
+    }, DAY_MS);
 
     return () => clearInterval(interval);
   }, [checkForUpdate]);

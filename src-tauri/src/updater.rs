@@ -267,8 +267,13 @@ pub async fn install_downloaded_update(app: AppHandle, file_path: String) -> Res
 
     #[cfg(target_os = "windows")]
     {
-        let mut child = std::process::Command::new(&file_path)
-            .arg("/S")
+        // Build the NSIS silent-install command with /D=<install_path>
+        // so the installer writes to the same directory instead of creating a duplicate
+        let nsis_install_dir = install_path.trim_end_matches('\\').trim_end_matches('/');
+        let mut cmd = std::process::Command::new(&file_path);
+        cmd.arg("/S");
+        cmd.arg(format!("/D={}", nsis_install_dir));
+        let mut child = cmd
             .spawn()
             .map_err(|e| format!("Failed to launch installer: {}", e))?;
 
