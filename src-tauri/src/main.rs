@@ -526,6 +526,21 @@ fn main() {
         std::fs::write(&path, r#"{"sections":[]}"#).unwrap();
     }
 
+    // Save install path on first run so updates know where to install
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            let config_path = exe_dir.join("install_path.json");
+            if !config_path.exists() {
+                let record = serde_json::json!({
+                    "path": exe_dir.to_string_lossy().to_string()
+                });
+                if let Ok(json) = serde_json::to_string_pretty(&record) {
+                    let _ = std::fs::write(&config_path, json);
+                }
+            }
+        }
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {

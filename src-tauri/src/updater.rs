@@ -5,6 +5,45 @@ use tauri::Emitter;
 use std::time::Duration;
 
 const REPO: &str = "rudmion/MLocker";
+const INSTALL_PATH_FILE: &str = "install_path.json";
+
+#[derive(Debug, Serialize, Deserialize)]
+struct InstallPathRecord {
+    path: String,
+}
+
+/// Get the real install path.
+/// 1. First check install_path.json next to the exe (saved on first run)
+/// 2. Fallback: detect from current exe location and save it
+fn get_real_install_path() -> Result<String, String> {
+    let exe_path =
+        std::env::current_exe().map_err(|e| format!("Failed to get exe path: {}", e))?;
+    let exe_dir = exe_path
+        .parent()
+        .ok_or("Failed to get exe parent directory")?;
+
+    // Try reading saved path
+    let config_path = exe_dir.join(INSTALL_PATH_FILE);
+    if let Ok(content) = std::fs::read_to_string(&config_path) {
+        if let Ok(record) = serde_json::from_str::<InstallPathRecord>(&content) {
+            let saved = std::path::PathBuf::from(&record.path);
+            if saved.exists() {
+                return Ok(record.path);
+            }
+        }
+    }
+
+    // First run or config missing — detect and save
+    let path_str = exe_dir.to_string_lossy().to_string();
+    let record = InstallPathRecord {
+        path: path_str.clone(),
+    };
+    if let Ok(json) = serde_json::to_string_pretty(&record) {
+        let _ = std::fs::write(&config_path, json);
+    }
+
+    Ok(path_str)
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UpdateInfo {
@@ -226,16 +265,7 @@ pub async fn download_update(app: AppHandle, url: String) -> Result<String, Stri
 
 #[tauri::command]
 pub async fn get_install_path(_app: AppHandle) -> Result<String, String> {
-    // Use current_exe() to get the actual path of the running binary,
-    // then take its parent directory — this is the real install location,
-    // even if the user chose a custom path during NSIS installation.
-    // resource_dir() returns the default Tauri path, not the custom one.
-    let exe_path =
-        std::env::current_exe().map_err(|e| format!("Failed to get install path: {}", e))?;
-    let dir = exe_path
-        .parent()
-        .ok_or("Failed to get install path: parent directory not found")?;
-    Ok(dir.to_string_lossy().to_string())
+    get_real_install_path()
 }
 
 #[tauri::command]
@@ -251,11 +281,8 @@ pub async fn install_downloaded_update(app: AppHandle, file_path: String) -> Res
         return Err("Installer file not found".to_string());
     }
 
-    // Get the actual install path from the running executable's location
-    let install_path = std::env::current_exe()
-        .ok()
-        .and_then(|p| p.parent().map(|d| d.to_string_lossy().to_string()))
-        .unwrap_or_else(|| "Unknown".to_string());
+    // Get the actual install path from saved config or exe location
+    let install_path = get_real_install_path().unwrap_or_else(|_| "Unknown".to_string());
 
     // Emit installing status
     let _ = app.emit(
