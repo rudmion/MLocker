@@ -207,19 +207,13 @@ pub async fn install_downloaded_update(app: AppHandle) -> Result<(), String> {
         return Err("Installer file not found".to_string());
     }
 
-    // Get current install directory from running executable
-    let exe_path =
-        std::env::current_exe().map_err(|e| format!("Failed to get current exe path: {}", e))?;
-    let install_dir = exe_path
-        .parent()
-        .ok_or("Failed to get install directory")?;
-
-    // Launch installer silently with /S and /D=<install_dir>
+    // Launch installer silently with /S
+    // NSIS remembers install path from initial installation (stored in Windows registry)
+    // No /D= flag needed — NSIS uses the remembered path
     #[cfg(target_os = "windows")]
     {
         std::process::Command::new(&file_path)
             .arg("/S")
-            .arg(format!("/D={}", install_dir.display()))
             .spawn()
             .map_err(|e| format!("Failed to launch installer: {}", e))?;
     }
