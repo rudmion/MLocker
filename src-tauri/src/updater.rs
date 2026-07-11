@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 use tauri::Emitter;
-use tauri::Manager;
 
 use std::time::Duration;
 
@@ -226,12 +225,17 @@ pub async fn download_update(app: AppHandle, url: String) -> Result<String, Stri
 }
 
 #[tauri::command]
-pub async fn get_install_path(app: AppHandle) -> Result<String, String> {
-    let path = app
-        .path()
-        .resource_dir()
-        .map_err(|e| format!("Failed to get install path: {}", e))?;
-    Ok(path.to_string_lossy().to_string())
+pub async fn get_install_path(_app: AppHandle) -> Result<String, String> {
+    // Use current_exe() to get the actual path of the running binary,
+    // then take its parent directory — this is the real install location,
+    // even if the user chose a custom path during NSIS installation.
+    // resource_dir() returns the default Tauri path, not the custom one.
+    let exe_path =
+        std::env::current_exe().map_err(|e| format!("Failed to get install path: {}", e))?;
+    let dir = exe_path
+        .parent()
+        .ok_or("Failed to get install path: parent directory not found")?;
+    Ok(dir.to_string_lossy().to_string())
 }
 
 #[tauri::command]
@@ -247,12 +251,11 @@ pub async fn install_downloaded_update(app: AppHandle, file_path: String) -> Res
         return Err("Installer file not found".to_string());
     }
 
-    // Get install path for display
-    let install_path = app
-        .path()
-        .resource_dir()
-        .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or_else(|_| "Unknown".to_string());
+    // Get the actual install path from the running executable's location
+    let install_path = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.to_string_lossy().to_string()))
+        .unwrap_or_else(|| "Unknown".to_string());
 
     // Emit installing status
     let _ = app.emit(
