@@ -21,6 +21,7 @@ function App() {
   const masterPasswordEnabled = useSettingsStore(
     (s) => s.masterPasswordEnabled,
   );
+  const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
 
   useKeyboardShortcuts();
 
@@ -32,6 +33,8 @@ function App() {
     checking,
     downloading,
     downloadProgress,
+    downloadedBytes,
+    totalBytes,
     installing,
     installProgress,
     installPath,
@@ -94,6 +97,8 @@ function App() {
           changelog={changelog}
           downloading={downloading}
           downloadProgress={downloadProgress}
+          downloadedBytes={downloadedBytes}
+          totalBytes={totalBytes}
           installing={installing}
           installProgress={installProgress}
           installPath={installPath}
@@ -129,7 +134,7 @@ function App() {
       {masterState === 'unlocked' && (
         <TooltipProvider delayDuration={2000}>
           <SettingsDialog
-            onCheckForUpdate={() => checkForUpdate(true)}
+            onCheckForUpdate={() => checkForUpdate(true, () => setSettingsOpen(false))}
             isCheckingUpdate={checking}
           />
           <SidebarProvider>

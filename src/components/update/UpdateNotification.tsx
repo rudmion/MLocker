@@ -8,12 +8,21 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return `${(bytes / Math.pow(1024, i)).toFixed(i > 1 ? 1 : 0)} ${units[i]}`;
+}
+
 type UpdateNotificationProps = {
   latestVersion: string;
   currentVersion: string;
   changelog: string | null;
   downloading: boolean;
   downloadProgress: number;
+  downloadedBytes: number;
+  totalBytes: number;
   installing: boolean;
   installProgress: number;
   installPath: string;
@@ -29,6 +38,8 @@ export function UpdateNotification({
   changelog,
   downloading,
   downloadProgress,
+  downloadedBytes,
+  totalBytes,
   installing,
   installProgress,
   installPath,
@@ -87,6 +98,12 @@ export function UpdateNotification({
                   style={{ width: `${progress}%` }}
                 />
               </div>
+              {downloading && totalBytes > 0 && (
+                <p className="text-[10px] text-muted-foreground">
+                  Загружено: {formatBytes(downloadedBytes)} из{' '}
+                  {formatBytes(totalBytes)}
+                </p>
+              )}
               {installing && installPath && (
                 <p
                   className="text-[10px] text-muted-foreground truncate"
