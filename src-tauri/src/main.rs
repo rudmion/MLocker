@@ -520,7 +520,8 @@ fn clear_master_password(state: State<AppState>) -> Result<(), String> {
 async fn check_for_update(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
     let current_version = app.package_info().version.to_string();
 
-    match app.updater()?.check().await {
+    let updater = app.updater().map_err(|e| e.to_string())?;
+    match updater.check().await {
         Ok(Some(update)) => Ok(serde_json::json!({
             "has_update": true,
             "current_version": current_version,
@@ -539,7 +540,8 @@ async fn check_for_update(app: tauri::AppHandle) -> Result<serde_json::Value, St
 
 #[tauri::command]
 async fn install_update(app: tauri::AppHandle) -> Result<(), String> {
-    let update = app.updater()?.check().await
+    let updater = app.updater().map_err(|e| e.to_string())?;
+    let update = updater.check().await
         .map_err(|e| format!("Failed to check for updates: {}", e))?
         .ok_or("No update available")?;
 
@@ -547,6 +549,7 @@ async fn install_update(app: tauri::AppHandle) -> Result<(), String> {
         .map_err(|e| format!("Failed to install update: {}", e))?;
 
     app.restart();
+    #[allow(unreachable_code)]
     Ok(())
 }
 

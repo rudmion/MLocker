@@ -15,7 +15,6 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useMasterPasswordAttempts } from '@/hooks/useMasterPasswordAttempts';
 import { useUpdateChecker } from '@/hooks/useUpdateChecker';
 import { UpdateDialog } from '@/components/update/UpdateDialog';
-import { notifications } from '@/lib/notifications';
 
 function App() {
   const loadData = useStore((s) => s.loadData);
@@ -33,10 +32,8 @@ function App() {
     checking,
     downloading,
     downloadProgress,
-    updateInstalled,
     dismissUpdate,
     installUpdate,
-    restartWithInstall,
     checkForUpdate,
   } = useUpdateChecker();
 
@@ -45,7 +42,6 @@ function App() {
   >('loading');
 
   const initialized = useRef(false);
-  const updateNotified = useRef(false);
   const {
     isBlocked,
     remainingSeconds,
@@ -76,13 +72,6 @@ function App() {
 
     init();
   }, []);
-
-  useEffect(() => {
-    if (updateInstalled && !updateNotified.current) {
-      updateNotified.current = true;
-      notifications.updateInstalled(restartWithInstall);
-    }
-  }, [updateInstalled, restartWithInstall]);
 
   const handleUnlocked = async () => {
     resetAttempts();

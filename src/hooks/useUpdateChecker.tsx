@@ -10,7 +10,6 @@ type UpdateState = {
   checking: boolean;
   downloading: boolean;
   downloadProgress: number;
-  updateInstalled: boolean;
   error: string | null;
 };
 
@@ -23,7 +22,6 @@ export function useUpdateChecker() {
     checking: false,
     downloading: false,
     downloadProgress: 0,
-    updateInstalled: false,
     error: null,
   });
   const [dismissed, setDismissed] = useState(false);
@@ -43,7 +41,6 @@ export function useUpdateChecker() {
           checking: false,
           downloading: false,
           downloadProgress: 0,
-          updateInstalled: false,
           error: null,
         });
         setDismissed(false);
@@ -89,10 +86,6 @@ export function useUpdateChecker() {
     setDismissed(true);
   }, []);
 
-  const restartWithInstall = useCallback(async () => {
-    await relaunch();
-  }, []);
-
   const installUpdate = useCallback(async () => {
     setState((prev) => ({ ...prev, downloading: true, downloadProgress: 0, error: null }));
 
@@ -110,7 +103,6 @@ export function useUpdateChecker() {
             }
             break;
           case 'Progress':
-            // We don't have total from the event, show indeterminate
             setState((prev) => ({ ...prev, downloadProgress: -1 }));
             break;
           case 'Finished':
@@ -119,13 +111,9 @@ export function useUpdateChecker() {
         }
       });
 
-      setState((prev) => ({
-        ...prev,
-        hasUpdate: false,
-        downloading: false,
-        downloadProgress: 0,
-        updateInstalled: true,
-      }));
+      // Auto-relaunch after install (on Windows app exits during downloadAndInstall,
+      // so this only runs on macOS/Linux)
+      await relaunch();
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       setState((prev) => ({
@@ -151,11 +139,9 @@ export function useUpdateChecker() {
     checking: state.checking,
     downloading: state.downloading,
     downloadProgress: state.downloadProgress,
-    updateInstalled: state.updateInstalled,
     error: state.error,
     dismissUpdate,
     installUpdate,
-    restartWithInstall,
     checkForUpdate,
   };
 }
