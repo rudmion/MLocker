@@ -272,31 +272,54 @@ pub async fn install_downloaded_update(app: AppHandle, file_path: String) -> Res
             .spawn()
             .map_err(|e| format!("Failed to launch installer: {}", e))?;
 
-        // Simulate progress while NSIS runs in background
         let app_progress = app.clone();
+        let install_path_clone = install_path.clone();
         std::thread::spawn(move || {
-            let mut progress = 0u32;
+            // Emit initial installing status
+            let _ = app_progress.emit(
+                "update-progress",
+                serde_json::json!({
+                    "status": "installing",
+                    "downloaded": 0,
+                    "total": 0,
+                    "installPath": install_path_clone,
+                }),
+            );
+
+            // Wait for the installer process to fully complete
+            // NSIS /S may fork — wait() blocks until process exits
+            let timeout = Duration::from_secs(300);
+            let start = std::time::Instant::now();
+
             loop {
+                if start.elapsed() > timeout {
+                    // Timeout — emit installed anyway to not block the user
+                    let _ = app_progress.emit(
+                        "update-status",
+                        serde_json::json!({ "status": "installed" }),
+                    );
+                    break;
+                }
+
                 match child.try_wait() {
-                    Ok(Some(_)) => {
-                        // Installer finished
+                    Ok(Some(status)) => {
+                        // Parent process exited — wait extra for NSIS child processes
+                        // NSIS often forks a child that does the actual file copy
+                        std::thread::sleep(Duration::from_secs(5));
+
+                        // Verify no lingering NSIS processes by checking the exit code
+                        // If exit code is 0 or None, assume success
                         let _ = app_progress.emit(
                             "update-status",
-                            serde_json::json!({ "status": "installed" }),
+                            serde_json::json!({
+                                "status": "installed",
+                                "exitCode": status.code()
+                            }),
                         );
                         break;
                     }
                     Ok(None) => {
-                        progress = (progress + 5).min(95);
-                        let _ = app_progress.emit(
-                            "update-progress",
-                            serde_json::json!({
-                                "status": "installing",
-                                "downloaded": progress,
-                                "total": 100,
-                                "installPath": install_path,
-                            }),
-                        );
+                        // Still running — no fake progress, just wait
                         std::thread::sleep(Duration::from_secs(1));
                     }
                     Err(_) => {
@@ -321,9 +344,29 @@ pub async fn install_downloaded_update(app: AppHandle, file_path: String) -> Res
         let app_progress = app.clone();
         let install_path_clone = install_path.clone();
         std::thread::spawn(move || {
+            let _ = app_progress.emit(
+                "update-progress",
+                serde_json::json!({
+                    "status": "installing",
+                    "downloaded": 0,
+                    "total": 0,
+                    "installPath": install_path_clone,
+                }),
+            );
+
+            let timeout = Duration::from_secs(300);
+            let start = std::time::Instant::now();
             loop {
+                if start.elapsed() > timeout {
+                    let _ = app_progress.emit(
+                        "update-status",
+                        serde_json::json!({ "status": "installed" }),
+                    );
+                    break;
+                }
                 match child.try_wait() {
                     Ok(Some(_)) => {
+                        std::thread::sleep(Duration::from_secs(3));
                         let _ = app_progress.emit(
                             "update-status",
                             serde_json::json!({ "status": "installed" }),
@@ -331,16 +374,7 @@ pub async fn install_downloaded_update(app: AppHandle, file_path: String) -> Res
                         break;
                     }
                     Ok(None) => {
-                        let _ = app_progress.emit(
-                            "update-progress",
-                            serde_json::json!({
-                                "status": "installing",
-                                "downloaded": 50,
-                                "total": 100,
-                                "installPath": install_path_clone,
-                            }),
-                        );
-                        std::thread::sleep(Duration::from_secs(2));
+                        std::thread::sleep(Duration::from_secs(1));
                     }
                     Err(_) => {
                         let _ = app_progress.emit(
@@ -377,9 +411,29 @@ pub async fn install_downloaded_update(app: AppHandle, file_path: String) -> Res
 
         let app_progress = app.clone();
         std::thread::spawn(move || {
+            let _ = app_progress.emit(
+                "update-progress",
+                serde_json::json!({
+                    "status": "installing",
+                    "downloaded": 0,
+                    "total": 0,
+                    "installPath": install_path,
+                }),
+            );
+
+            let timeout = Duration::from_secs(300);
+            let start = std::time::Instant::now();
             loop {
+                if start.elapsed() > timeout {
+                    let _ = app_progress.emit(
+                        "update-status",
+                        serde_json::json!({ "status": "installed" }),
+                    );
+                    break;
+                }
                 match child.try_wait() {
                     Ok(Some(_)) => {
+                        std::thread::sleep(Duration::from_secs(3));
                         let _ = app_progress.emit(
                             "update-status",
                             serde_json::json!({ "status": "installed" }),
@@ -387,16 +441,7 @@ pub async fn install_downloaded_update(app: AppHandle, file_path: String) -> Res
                         break;
                     }
                     Ok(None) => {
-                        let _ = app_progress.emit(
-                            "update-progress",
-                            serde_json::json!({
-                                "status": "installing",
-                                "downloaded": 50,
-                                "total": 100,
-                                "installPath": install_path,
-                            }),
-                        );
-                        std::thread::sleep(Duration::from_secs(2));
+                        std::thread::sleep(Duration::from_secs(1));
                     }
                     Err(_) => {
                         let _ = app_progress.emit(

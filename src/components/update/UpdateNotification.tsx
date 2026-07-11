@@ -5,8 +5,9 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
@@ -24,9 +25,9 @@ type UpdateNotificationProps = {
   downloadedBytes: number;
   totalBytes: number;
   installing: boolean;
-  installProgress: number;
   installPath: string;
   needsRestart: boolean;
+  logs: string[];
   onInstall: () => void;
   onRestart: () => void;
   onDismiss: () => void;
@@ -41,16 +42,20 @@ export function UpdateNotification({
   downloadedBytes,
   totalBytes,
   installing,
-  installProgress,
   installPath,
   needsRestart,
+  logs,
   onInstall,
   onRestart,
   onDismiss,
 }: UpdateNotificationProps) {
   const [showChangelog, setShowChangelog] = useState(false);
+  const [showLogs, setShowLogs] = useState(false);
+  const logsEndRef = useRef<HTMLDivElement>(null);
 
-  const progress = installing ? installProgress : downloadProgress;
+  useEffect(() => {
+    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [logs]);
 
   return (
     <div className="fixed bottom-4 right-4 z-50 w-80 animate-in slide-in-from-bottom-4 fade-in duration-300">
@@ -83,34 +88,45 @@ export function UpdateNotification({
           {/* Download/Install Progress */}
           {(downloading || installing) && (
             <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <Loader2 size={12} className="animate-spin" />
-                  {downloading
-                    ? 'Загрузка обновления...'
-                    : 'Установка обновления...'}
-                </span>
-                <span className="font-medium text-foreground">{progress}%</span>
-              </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-primary transition-all duration-300"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-              {downloading && totalBytes > 0 && (
-                <p className="text-[10px] text-muted-foreground">
-                  Загружено: {formatBytes(downloadedBytes)} из{' '}
-                  {formatBytes(totalBytes)}
-                </p>
-              )}
-              {installing && installPath && (
-                <p
-                  className="text-[10px] text-muted-foreground truncate"
-                  title={installPath}
-                >
-                  Установка в: {installPath}
-                </p>
+              {downloading ? (
+                <>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1.5">
+                      <Loader2 size={12} className="animate-spin" />
+                      Загрузка обновления...
+                    </span>
+                    <span className="font-medium text-foreground">
+                      {downloadProgress}%
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all duration-300"
+                      style={{ width: `${downloadProgress}%` }}
+                    />
+                  </div>
+                  {totalBytes > 0 && (
+                    <p className="text-[10px] text-muted-foreground">
+                      Загружено: {formatBytes(downloadedBytes)} из{' '}
+                      {formatBytes(totalBytes)}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Loader2 size={12} className="animate-spin" />
+                    Установка обновления...
+                  </div>
+                  {installPath && (
+                    <p
+                      className="text-[10px] text-muted-foreground truncate"
+                      title={installPath}
+                    >
+                      Установка в: {installPath}
+                    </p>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -155,6 +171,32 @@ export function UpdateNotification({
             </div>
           )}
         </div>
+
+        {/* Log panel */}
+        {logs.length > 0 && (
+          <div className="border-t border-border">
+            <button
+              onClick={() => setShowLogs(!showLogs)}
+              className="flex w-full items-center gap-1.5 px-4 py-2 text-[10px] text-muted-foreground hover:bg-muted/50 transition-colors"
+            >
+              <ChevronRight
+                size={10}
+                className={`transition-transform ${showLogs ? 'rotate-90' : ''}`}
+              />
+              Журнал обновления ({logs.length})
+            </button>
+            {showLogs && (
+              <div className="max-h-28 overflow-y-auto border-t border-border bg-muted/30 px-4 py-2">
+                {logs.map((log, i) => (
+                  <p key={i} className="text-[10px] text-muted-foreground font-mono leading-relaxed">
+                    {log}
+                  </p>
+                ))}
+                <div ref={logsEndRef} />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Actions */}
         {!downloading && !installing && !needsRestart && (

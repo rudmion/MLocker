@@ -27,6 +27,7 @@ type UpdateState = {
   installPath: string;
   needsRestart: boolean;
   error: string | null;
+  logs: string[];
 };
 
 export function useUpdateChecker() {
@@ -46,20 +47,28 @@ export function useUpdateChecker() {
     installPath: '',
     needsRestart: false,
     error: null,
+    logs: [],
   });
   const [dismissed, setDismissed] = useState(false);
 
   const stateRef = useRef(state);
   stateRef.current = state;
 
+  const addLog = useCallback((msg: string) => {
+    const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setState((prev) => ({ ...prev, logs: [...prev.logs, `[${time}] ${msg}`] }));
+  }, []);
+
   const checkForUpdate = useCallback(
     async (showNoUpdateToast = false, onUpdateFound?: () => void) => {
       setState((prev) => ({ ...prev, checking: true, error: null }));
+      addLog('Проверка обновлений...');
 
       try {
         const info = await invoke<UpdateInfo>('check_for_update');
 
         if (info.has_update) {
+          addLog(`Обновление найдено: v${info.latest_version} (текущая: v${info.current_version})`);
           setState({
             hasUpdate: true,
             latestVersion: info.latest_version,
@@ -76,10 +85,12 @@ export function useUpdateChecker() {
             installPath: '',
             needsRestart: false,
             error: null,
+            logs: stateRef.current.logs,
           });
           setDismissed(false);
           onUpdateFound?.();
         } else {
+          addLog(`Обновлений нет. Текущая версия: v${info.current_version}`);
           setState((prev) => ({
             ...prev,
             currentVersion: info.current_version,
@@ -100,6 +111,7 @@ export function useUpdateChecker() {
         }
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
+        addLog(`Ошибка проверки: ${message}`);
         setState((prev) => ({
           ...prev,
           checking: false,
@@ -137,6 +149,10 @@ export function useUpdateChecker() {
   }, []);
 
   const installUpdate = useCallback(async () => {
+    // Guard against double-click
+    if (stateRef.current.downloading || stateRef.current.installing) return;
+
+    addLog('Начало загрузки обновления...');
     setState((prev) => ({
       ...prev,
       downloading: true,
@@ -152,6 +168,10 @@ export function useUpdateChecker() {
     }>('update-progress', (event) => {
       const { downloaded, total, status, installPath } = event.payload;
       if (status === 'installing') {
+        if (!stateRef.current.installing) {
+          addLog('Запуск установщика...');
+          if (installPath) addLog(`Путь установки: ${installPath}`);
+        }
         setState((prev) => ({
           ...prev,
           downloading: false,
@@ -173,10 +193,12 @@ export function useUpdateChecker() {
       }
     });
 
-    const unlistenStatus = await listen<{ status: string }>(
+    const unlistenStatus = await listen<{ status: string; exitCode?: number }>(
       'update-status',
       (event) => {
         if (event.payload.status === 'installed') {
+          const code = event.payload.exitCode;
+          addLog(`Установка завершена (код выхода: ${code ?? 'N/A'})`);
           setState((prev) => ({
             ...prev,
             installing: false,
@@ -193,10 +215,13 @@ export function useUpdateChecker() {
         throw new Error('Download URL not available');
       }
 
+      addLog('Скачивание файла обновления...');
       const filePath = await invoke<string>('download_update', { url });
+      addLog(`Файл загружен: ${filePath}`);
       await invoke('install_downloaded_update', { filePath });
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
+      addLog(`Ошибка: ${message}`);
       setState((prev) => ({
         ...prev,
         downloading: false,
@@ -215,14 +240,16 @@ export function useUpdateChecker() {
       unlistenProgress();
       unlistenStatus();
     }
-  }, []);
+  }, [addLog]);
 
   const restartApp = useCallback(async () => {
+    addLog('Перезапуск приложения...');
     try {
       await invoke('restart_app');
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
-      setState((prev) => ({ ...prev, error: message }));
+      addLog(`Ошибка перезапуска: ${message}`);
+      setState((prev) => ({ ...prev, error: message, needsRestart: false }));
 
       const { toast } = await import('sonner');
       const { CircleX } = await import('lucide-react');
@@ -230,7 +257,7 @@ export function useUpdateChecker() {
         icon: <CircleX className="text-red-500 pe-1" />,
       });
     }
-  }, []);
+  }, [addLog]);
 
   return {
     hasUpdate: state.hasUpdate && !dismissed,
@@ -247,6 +274,7 @@ export function useUpdateChecker() {
     installPath: state.installPath,
     needsRestart: state.needsRestart,
     error: state.error,
+    logs: state.logs,
     dismissUpdate,
     installUpdate,
     restartApp,

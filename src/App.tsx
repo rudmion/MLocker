@@ -36,9 +36,9 @@ function App() {
     downloadedBytes,
     totalBytes,
     installing,
-    installProgress,
     installPath,
     needsRestart,
+    logs,
     dismissUpdate,
     installUpdate,
     restartApp,
@@ -100,9 +100,9 @@ function App() {
           downloadedBytes={downloadedBytes}
           totalBytes={totalBytes}
           installing={installing}
-          installProgress={installProgress}
           installPath={installPath}
           needsRestart={needsRestart}
+          logs={logs}
           onInstall={installUpdate}
           onRestart={restartApp}
           onDismiss={dismissUpdate}
