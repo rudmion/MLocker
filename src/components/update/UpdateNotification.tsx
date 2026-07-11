@@ -1,4 +1,11 @@
-import { X, Download, Loader2, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import {
+  X,
+  Download,
+  Loader2,
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react';
 import { useState } from 'react';
 
 type UpdateNotificationProps = {
@@ -68,7 +75,9 @@ export function UpdateNotification({
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   <Loader2 size={12} className="animate-spin" />
-                  {downloading ? 'Загрузка обновления...' : 'Установка обновления...'}
+                  {downloading
+                    ? 'Загрузка обновления...'
+                    : 'Установка обновления...'}
                 </span>
                 <span className="font-medium text-foreground">{progress}%</span>
               </div>
@@ -79,7 +88,10 @@ export function UpdateNotification({
                 />
               </div>
               {installing && installPath && (
-                <p className="text-[10px] text-muted-foreground truncate" title={installPath}>
+                <p
+                  className="text-[10px] text-muted-foreground truncate"
+                  title={installPath}
+                >
                   Установка в: {installPath}
                 </p>
               )}
@@ -90,10 +102,14 @@ export function UpdateNotification({
           {needsRestart && (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">
-                Обновление установлено. Требуется перезапуск для активации новой версии.
+                Обновление установлено. Требуется перезапуск для активации новой
+                версии.
               </p>
               {installPath && (
-                <p className="text-[10px] text-muted-foreground truncate" title={installPath}>
+                <p
+                  className="text-[10px] text-muted-foreground truncate"
+                  title={installPath}
+                >
                   Путь установки: {installPath}
                 </p>
               )}
@@ -107,7 +123,11 @@ export function UpdateNotification({
                 onClick={() => setShowChangelog(!showChangelog)}
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
-                {showChangelog ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                {showChangelog ? (
+                  <ChevronUp size={12} />
+                ) : (
+                  <ChevronDown size={12} />
+                )}
                 {showChangelog ? 'Скрыть изменения' : 'Показать изменения'}
               </button>
               {showChangelog && (
