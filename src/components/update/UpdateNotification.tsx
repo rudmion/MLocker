@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronUp,
   ChevronRight,
+  CircleAlert,
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
@@ -27,6 +28,7 @@ type UpdateNotificationProps = {
   installing: boolean;
   installPath: string;
   needsRestart: boolean;
+  error: string | null;
   logs: string[];
   onInstall: () => void;
   onRestart: () => void;
@@ -44,6 +46,7 @@ export function UpdateNotification({
   installing,
   installPath,
   needsRestart,
+  error,
   logs,
   onInstall,
   onRestart,
@@ -146,6 +149,14 @@ export function UpdateNotification({
                   Путь установки: {installPath}
                 </p>
               )}
+            </div>
+          )}
+
+          {/* Error state */}
+          {error && !downloading && !installing && !needsRestart && (
+            <div className="flex items-start gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3">
+              <CircleAlert size={14} className="mt-0.5 shrink-0 text-destructive" />
+              <p className="text-xs text-destructive">{error}</p>
             </div>
           )}
 

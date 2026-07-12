@@ -56,7 +56,14 @@ export function useUpdateChecker() {
 
   const addLog = useCallback((msg: string) => {
     const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    setState((prev) => ({ ...prev, logs: [...prev.logs, `[${time}] ${msg}`] }));
+    setState((prev) => {
+      const newLogs = [...prev.logs, `[${time}] ${msg}`];
+      // Keep only last 50 log entries
+      if (newLogs.length > 50) {
+        newLogs.splice(0, newLogs.length - 50);
+      }
+      return { ...prev, logs: newLogs };
+    });
   }, []);
 
   const checkForUpdate = useCallback(
@@ -190,7 +197,7 @@ export function useUpdateChecker() {
       }
     });
 
-    const unlistenStatus = await listen<{ status: string; exitCode?: number }>(
+    const unlistenStatus = await listen<{ status: string; exitCode?: number; error?: string }>(
       'update-status',
       (event) => {
         if (event.payload.status === 'installed') {
@@ -201,6 +208,17 @@ export function useUpdateChecker() {
             installing: false,
             installProgress: 100,
             needsRestart: true,
+          }));
+        } else if (event.payload.status === 'error') {
+          const errorMsg = event.payload.error || 'Unknown installation error';
+          addLog(`Ошибка установки: ${errorMsg}`);
+          setState((prev) => ({
+            ...prev,
+            downloading: false,
+            downloadProgress: 0,
+            installing: false,
+            installProgress: 0,
+            error: errorMsg,
           }));
         }
       },

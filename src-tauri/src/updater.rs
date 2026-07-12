@@ -6,16 +6,13 @@ use std::time::Duration;
 
 const REPO: &str = "rudmion/MLocker";
 const INSTALL_PATH_FILE: &str = "install_path.json";
-const CLEANUP_MARKER: &str = ".update_cleanup.json";
 
 #[derive(Debug, Serialize, Deserialize)]
 struct InstallPathRecord {
     path: String,
 }
 
-/// Get the real install path.
-/// 1. First check install_path.json next to the exe (saved on first run)
-/// 2. Fallback: detect from current exe location and save it
+/// Get the real install path from install_path.json
 fn get_real_install_path() -> Result<String, String> {
     let exe_path =
         std::env::current_exe().map_err(|e| format!("Failed to get exe path: {}", e))?;
@@ -23,7 +20,6 @@ fn get_real_install_path() -> Result<String, String> {
         .parent()
         .ok_or("Failed to get exe parent directory")?;
 
-    // Try reading saved path
     let config_path = exe_dir.join(INSTALL_PATH_FILE);
     if let Ok(content) = std::fs::read_to_string(&config_path) {
         if let Ok(record) = serde_json::from_str::<InstallPathRecord>(&content) {
@@ -34,11 +30,8 @@ fn get_real_install_path() -> Result<String, String> {
         }
     }
 
-    // First run or config missing — detect and save
     let path_str = exe_dir.to_string_lossy().to_string();
-    let record = InstallPathRecord {
-        path: path_str.clone(),
-    };
+    let record = InstallPathRecord { path: path_str.clone() };
     if let Ok(json) = serde_json::to_string_pretty(&record) {
         let _ = std::fs::write(&config_path, json);
     }
@@ -46,72 +39,45 @@ fn get_real_install_path() -> Result<String, String> {
     Ok(path_str)
 }
 
-/// Save a list of all files in the install directory before updating.
-fn save_cleanup_manifest(install_dir: &str) {
-    let manifest_path = std::path::PathBuf::from(install_dir).join(CLEANUP_MARKER);
-    let mut files: Vec<String> = Vec::new();
-
-    if let Ok(entries) = std::fs::read_dir(install_dir) {
-        for entry in entries.flatten() {
-            if let Ok(meta) = entry.metadata() {
-                let name = entry.file_name();
-                if let Some(name_str) = name.to_str() {
-                    if meta.is_file() {
-                        files.push(name_str.to_string());
-                    } else if meta.is_dir() {
-                        files.push(format!("{}/", name_str));
-                    }
-                }
-            }
-        }
-    }
-
-    if let Ok(json) = serde_json::to_string(&files) {
-        let _ = std::fs::write(&manifest_path, json);
-    }
+/// Get the default NSIS install directory for this app.
+/// NSIS installs to %LOCALAPPDATA%\{productName} by default.
+fn get_nsis_default_dir() -> Result<String, String> {
+    let local_app_data = std::env::var("LOCALAPPDATA")
+        .map_err(|e| format!("LOCALAPPDATA not set: {}", e))?;
+    Ok(format!("{}\\MLocker", local_app_data))
 }
 
-/// Run cleanup after update: remove leftover files from old version.
-/// Compares old file list with current directory and deletes files
-/// that the new installer did NOT create.
-pub fn run_cleanup_after_update(install_dir: &str) {
-    let manifest_path = std::path::PathBuf::from(install_dir).join(CLEANUP_MARKER);
+/// Copy a directory recursively, overwriting files in dst.
+fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> Result<(), String> {
+    std::fs::create_dir_all(dst)
+        .map_err(|e| format!("Failed to create dir {}: {}", dst.display(), e))?;
 
-    let old_entries: Vec<String> = match std::fs::read_to_string(&manifest_path) {
-        Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
-        Err(_) => return,
-    };
+    let entries = std::fs::read_dir(src)
+        .map_err(|e| format!("Failed to read dir {}: {}", src.display(), e))?;
 
-    // Collect current entries
-    let mut current_entries = std::collections::HashSet::new();
-    if let Ok(entries) = std::fs::read_dir(install_dir) {
-        for entry in entries.flatten() {
-            if let Ok(meta) = entry.metadata() {
-                if let Some(name) = entry.file_name().to_str() {
-                    if meta.is_file() {
-                        current_entries.insert(name.to_string());
-                    } else if meta.is_dir() {
-                        current_entries.insert(format!("{}/", name));
-                    }
-                }
-            }
+    for entry in entries.flatten() {
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+
+        if src_path.is_dir() {
+            copy_dir_recursive(&src_path, &dst_path)?;
+        } else {
+            std::fs::copy(&src_path, &dst_path)
+                .map_err(|e| format!("Failed to copy {} -> {}: {}",
+                    src_path.display(), dst_path.display(), e))?;
         }
     }
 
-    // Delete entries from old version that don't exist in new version
-    for old_entry in &old_entries {
-        if old_entry == CLEANUP_MARKER {
-            continue;
-        }
-        if !current_entries.contains(old_entry) {
-            // Already removed by installer or doesn't exist — skip
-            continue;
-        }
-        // File/dir exists in both — it was overwritten by installer, keep it
-    }
+    Ok(())
+}
 
-    // Remove the manifest itself
-    let _ = std::fs::remove_file(&manifest_path);
+/// Remove a directory recursively.
+fn remove_dir_recursive(path: &std::path::Path) -> Result<(), String> {
+    if path.exists() {
+        std::fs::remove_dir_all(path)
+            .map_err(|e| format!("Failed to remove {}: {}", path.display(), e))?;
+    }
+    Ok(())
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -201,7 +167,7 @@ pub async fn check_for_update(app: AppHandle) -> Result<UpdateInfo, String> {
         });
     }
 
-    // Fallback: check tags if no releases exist
+    // Fallback: check tags if releases endpoint returned non-403 error (e.g. 404)
     let tags_url = format!("https://api.github.com/repos/{REPO}/tags");
     let tags_response = client
         .get(&tags_url)
@@ -240,12 +206,13 @@ pub async fn check_for_update(app: AppHandle) -> Result<UpdateInfo, String> {
             }
 
             let latest_version = tag_name.trim_start_matches('v').to_string();
-            let has_update = compare_versions(&latest_version, &current_version);
 
             let html_url = format!("https://github.com/{REPO}/releases/tag/{tag_name}");
 
+            // Tags don't have assets — no download URL available
+            // Only report update if user can actually download it
             return Ok(UpdateInfo {
-                has_update,
+                has_update: false,
                 current_version,
                 latest_version,
                 body: None,
@@ -350,8 +317,11 @@ pub async fn install_downloaded_update(app: AppHandle, file_path: String) -> Res
         return Err("Installer file not found".to_string());
     }
 
-    // Get the actual install path from saved config or exe location
-    let install_path = get_real_install_path().unwrap_or_else(|_| "Unknown".to_string());
+    // Get the user's custom install path (where the app currently runs from)
+    let custom_path = get_real_install_path().unwrap_or_else(|_| "Unknown".to_string());
+
+    // Get the default NSIS install directory
+    let nsis_default = get_nsis_default_dir().unwrap_or_else(|_| "Unknown".to_string());
 
     // Emit installing status
     let _ = app.emit(
@@ -360,90 +330,118 @@ pub async fn install_downloaded_update(app: AppHandle, file_path: String) -> Res
             "status": "installing",
             "downloaded": 0,
             "total": 0,
-            "installPath": install_path,
+            "installPath": custom_path,
         }),
     );
 
     #[cfg(target_os = "windows")]
     {
-        // Save file list before update for cleanup afterward
-        save_cleanup_manifest(&install_path);
+        let custom_path_clone = custom_path.clone();
+        let nsis_default_clone = nsis_default.clone();
+        let app_clone = app.clone();
+        let installer_path = file_path.clone();
 
-        // Try to run old version's uninstaller first to clean up leftover files
-        let uninstaller = std::path::PathBuf::from(&install_path).join("uninstall.exe");
-        if uninstaller.exists() {
-            let _ = std::process::Command::new(&uninstaller)
-                .arg("/S")
-                .spawn()
-                .and_then(|mut child| {
-                    // Wait briefly for uninstaller to finish
-                    let _ = child.wait();
-                    Ok(())
-                });
-        }
-
-        // Build the NSIS silent-install command with /D=<install_path>
-        let nsis_install_dir = install_path.trim_end_matches('\\').trim_end_matches('/');
-        let mut cmd = std::process::Command::new(&file_path);
-        cmd.arg("/S");
-        cmd.arg(format!("/D={}", nsis_install_dir));
-        let mut child = cmd
-            .spawn()
-            .map_err(|e| format!("Failed to launch installer: {}", e))?;
-
-        let app_progress = app.clone();
-        let install_path_clone = install_path.clone();
         std::thread::spawn(move || {
-            let _ = app_progress.emit(
+            let _ = app_clone.emit(
                 "update-progress",
                 serde_json::json!({
                     "status": "installing",
                     "downloaded": 0,
                     "total": 0,
-                    "installPath": install_path_clone,
+                    "installPath": custom_path_clone,
                 }),
             );
 
+            // Step 1: Run NSIS installer (it will install to its default dir)
+            let mut cmd = std::process::Command::new(&installer_path);
+            cmd.arg("/S");
+            let mut child = match cmd.spawn() {
+                Ok(c) => c,
+                Err(e) => {
+                    let _ = app_clone.emit(
+                        "update-status",
+                        serde_json::json!({ "status": "error", "error": format!("Failed to launch installer: {}", e) }),
+                    );
+                    return;
+                }
+            };
+
+            // Step 2: Wait for installer to finish
             let timeout = Duration::from_secs(300);
             let start = std::time::Instant::now();
-
+            let mut exited = false;
             loop {
                 if start.elapsed() > timeout {
-                    let _ = app_progress.emit(
-                        "update-status",
-                        serde_json::json!({ "status": "installed" }),
-                    );
                     break;
                 }
-
                 match child.try_wait() {
-                    Ok(Some(status)) => {
-                        std::thread::sleep(Duration::from_secs(5));
-
-                        let _ = app_progress.emit(
-                            "update-status",
-                            serde_json::json!({
-                                "status": "installed",
-                                "exitCode": status.code()
-                            }),
-                        );
+                    Ok(Some(_)) => {
+                        // Parent exited — wait for NSIS child processes
+                        std::thread::sleep(Duration::from_secs(2));
+                        exited = true;
                         break;
                     }
                     Ok(None) => {
                         std::thread::sleep(Duration::from_secs(1));
                     }
-                    Err(_) => {
-                        let _ = app_progress.emit(
-                            "update-status",
-                            serde_json::json!({ "status": "installed" }),
-                        );
-                        break;
-                    }
+                    Err(_) => break,
                 }
             }
 
-            // Run cleanup after installer finishes
-            run_cleanup_after_update(&install_path_clone);
+            // Wait for any remaining NSIS child processes to finish
+            // NSIS forks children that do the actual file operations
+            if exited {
+                let nsis_default_path = std::path::PathBuf::from(&nsis_default_clone);
+                let wait_deadline = std::time::Instant::now() + Duration::from_secs(15);
+                loop {
+                    if std::time::Instant::now() > wait_deadline {
+                        break;
+                    }
+                    // Check if any NSIS-related processes are still running
+                    // by attempting to lock the install directory
+                    let test_file = nsis_default_path.join(".update_lock_test");
+                    if std::fs::File::create(&test_file).is_ok() {
+                        let _ = std::fs::remove_file(&test_file);
+                        break; // Directory is accessible — NSIS finished
+                    }
+                    std::thread::sleep(Duration::from_secs(1));
+                }
+            }
+
+            // Step 3: NSIS installed to default dir. Now copy files to user's custom dir.
+            let nsis_default_path = std::path::PathBuf::from(&nsis_default_clone);
+            let custom_path_obj = std::path::PathBuf::from(&custom_path_clone);
+
+            if nsis_default_path.exists() && nsis_default_path != custom_path_obj {
+                // Copy new files from default dir to custom dir
+                if let Err(e) = copy_dir_recursive(&nsis_default_path, &custom_path_obj) {
+                    let _ = app_clone.emit(
+                        "update-status",
+                        serde_json::json!({ "status": "error", "error": format!("Failed to copy update files: {}", e) }),
+                    );
+                    return;
+                }
+
+                // Copy succeeded — delete the default dir
+                let _ = remove_dir_recursive(&nsis_default_path);
+
+                // Update install_path.json to reflect the current location
+                let config_path = custom_path_obj.join(INSTALL_PATH_FILE);
+                let record = InstallPathRecord {
+                    path: custom_path_clone,
+                };
+                if let Ok(json) = serde_json::to_string_pretty(&record) {
+                    let _ = std::fs::write(&config_path, json);
+                }
+            }
+
+            // Step 4: Delete the installer from temp
+            let _ = std::fs::remove_file(&installer_path);
+
+            let _ = app_clone.emit(
+                "update-status",
+                serde_json::json!({ "status": "installed" }),
+            );
         });
     }
 
@@ -455,7 +453,8 @@ pub async fn install_downloaded_update(app: AppHandle, file_path: String) -> Res
             .map_err(|e| format!("Failed to open installer: {}", e))?;
 
         let app_progress = app.clone();
-        let install_path_clone = install_path.clone();
+        let install_path_clone = custom_path.clone();
+        let installer_path = file_path.clone();
         std::thread::spawn(move || {
             let _ = app_progress.emit(
                 "update-progress",
@@ -480,6 +479,7 @@ pub async fn install_downloaded_update(app: AppHandle, file_path: String) -> Res
                 match child.try_wait() {
                     Ok(Some(_)) => {
                         std::thread::sleep(Duration::from_secs(3));
+                        let _ = std::fs::remove_file(&installer_path);
                         let _ = app_progress.emit(
                             "update-status",
                             serde_json::json!({ "status": "installed" }),
@@ -523,6 +523,7 @@ pub async fn install_downloaded_update(app: AppHandle, file_path: String) -> Res
         };
 
         let app_progress = app.clone();
+        let installer_path = file_path.clone();
         std::thread::spawn(move || {
             let _ = app_progress.emit(
                 "update-progress",
@@ -530,7 +531,7 @@ pub async fn install_downloaded_update(app: AppHandle, file_path: String) -> Res
                     "status": "installing",
                     "downloaded": 0,
                     "total": 0,
-                    "installPath": install_path,
+                    "installPath": custom_path,
                 }),
             );
 
@@ -547,6 +548,7 @@ pub async fn install_downloaded_update(app: AppHandle, file_path: String) -> Res
                 match child.try_wait() {
                     Ok(Some(_)) => {
                         std::thread::sleep(Duration::from_secs(3));
+                        let _ = std::fs::remove_file(&installer_path);
                         let _ = app_progress.emit(
                             "update-status",
                             serde_json::json!({ "status": "installed" }),
@@ -610,6 +612,8 @@ fn find_download_url(release: &serde_json::Value) -> Option<String> {
 fn compare_versions(latest: &str, current: &str) -> bool {
     let parse = |v: &str| -> Vec<u32> {
         v.split('.')
+            .take(3)
+            .map(|s| s.chars().take_while(|c| c.is_ascii_digit()).collect::<String>())
             .filter_map(|s| s.parse().ok())
             .collect()
     };

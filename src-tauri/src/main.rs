@@ -538,9 +538,6 @@ fn main() {
                     let _ = std::fs::write(&config_path, json);
                 }
             }
-
-            // Run post-update cleanup if a previous update left a manifest
-            updater::run_cleanup_after_update(&exe_dir.to_string_lossy());
         }
     }
 

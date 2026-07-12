@@ -38,6 +38,7 @@ function App() {
     installing,
     installPath,
     needsRestart,
+    error,
     logs,
     dismissUpdate,
     installUpdate,
@@ -102,6 +103,7 @@ function App() {
           installing={installing}
           installPath={installPath}
           needsRestart={needsRestart}
+          error={error}
           logs={logs}
           onInstall={installUpdate}
           onRestart={restartApp}
