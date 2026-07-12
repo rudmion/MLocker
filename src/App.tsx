@@ -21,29 +21,18 @@ function App() {
   const masterPasswordEnabled = useSettingsStore(
     (s) => s.masterPasswordEnabled,
   );
-  const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
 
   useKeyboardShortcuts();
 
   const {
-    hasUpdate,
-    latestVersion,
-    currentVersion,
-    changelog,
-    checking,
-    downloading,
+    status: updateStatus,
+    updateInfo,
     downloadProgress,
-    downloadedBytes,
-    totalBytes,
-    installing,
-    installPath,
-    needsRestart,
-    error,
-    logs,
-    dismissUpdate,
-    installUpdate,
-    restartApp,
+    error: updateError,
     checkForUpdate,
+    downloadAndInstall,
+    restart,
+    dismiss,
   } = useUpdateChecker();
 
   const [masterState, setMasterState] = useState<
@@ -91,23 +80,17 @@ function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <Toaster />
-      {masterState === 'unlocked' && hasUpdate && (
+      {masterState === 'unlocked' && (
         <UpdateNotification
-          latestVersion={latestVersion}
-          currentVersion={currentVersion}
-          changelog={changelog}
-          downloading={downloading}
+          status={updateStatus}
+          currentVersion={updateInfo?.currentVersion ?? ''}
+          latestVersion={updateInfo?.version ?? ''}
+          changelog={updateInfo?.body ?? null}
           downloadProgress={downloadProgress}
-          downloadedBytes={downloadedBytes}
-          totalBytes={totalBytes}
-          installing={installing}
-          installPath={installPath}
-          needsRestart={needsRestart}
-          error={error}
-          logs={logs}
-          onInstall={installUpdate}
-          onRestart={restartApp}
-          onDismiss={dismissUpdate}
+          error={updateError}
+          onInstall={downloadAndInstall}
+          onRestart={restart}
+          onDismiss={dismiss}
         />
       )}
       {masterState === 'loading' && (
@@ -136,8 +119,8 @@ function App() {
       {masterState === 'unlocked' && (
         <TooltipProvider delayDuration={2000}>
           <SettingsDialog
-            onCheckForUpdate={() => checkForUpdate(true, () => setSettingsOpen(false))}
-            isCheckingUpdate={checking}
+            onCheckForUpdate={() => checkForUpdate(false)}
+            isCheckingUpdate={updateStatus === 'checking'}
           />
           <SidebarProvider>
             <Main />

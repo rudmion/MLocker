@@ -2,7 +2,6 @@
 
 mod favicon;
 mod crypto;
-mod updater;
 
 use tauri::{Manager, State};
 use std::sync::Mutex;
@@ -526,21 +525,6 @@ fn main() {
         std::fs::write(&path, r#"{"sections":[]}"#).unwrap();
     }
 
-    // Save install path on first run so updates know where to install
-    if let Ok(exe_path) = std::env::current_exe() {
-        if let Some(exe_dir) = exe_path.parent() {
-            let config_path = exe_dir.join("install_path.json");
-            if !config_path.exists() {
-                let record = serde_json::json!({
-                    "path": exe_dir.to_string_lossy().to_string()
-                });
-                if let Ok(json) = serde_json::to_string_pretty(&record) {
-                    let _ = std::fs::write(&config_path, json);
-                }
-            }
-        }
-    }
-
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
@@ -548,6 +532,8 @@ fn main() {
                 window.set_focus().ok();
             }
         }))
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .manage(AppState {
             path: Mutex::new(path),
             encryption_key: Mutex::new(None),
@@ -562,12 +548,7 @@ fn main() {
             setup_master_password_with_recovery,
             reset_master_password,
             clear_master_password,
-            favicon::download_favicon,
-            updater::check_for_update,
-            updater::download_update,
-            updater::install_downloaded_update,
-            updater::restart_app,
-            updater::get_install_path
+            favicon::download_favicon
         ])
         .run(tauri::generate_context!())
         .expect("error while running app");

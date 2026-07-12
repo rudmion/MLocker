@@ -1,0 +1,126 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { check } from '@tauri-apps/plugin-updater';
+import { relaunch } from '@tauri-apps/plugin-process';
+import type { Update } from '@tauri-apps/plugin-updater';
+
+export type UpdateStatus =
+  | 'idle'
+  | 'checking'
+  | 'hasUpdate'
+  | 'downloading'
+  | 'installing'
+  | 'installed'
+  | 'error';
+
+export function useUpdateChecker() {
+  const [status, setStatus] = useState<UpdateStatus>('idle');
+  const [updateInfo, setUpdateInfo] = useState<Update | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const autoChecked = useRef(false);
+  const totalBytes = useRef(0);
+  const downloadedBytes = useRef(0);
+
+  const checkForUpdate = useCallback(async (silent = true) => {
+    try {
+      setStatus('checking');
+      setError(null);
+
+      const update = await check();
+
+      if (update) {
+        setUpdateInfo(update);
+        setStatus('hasUpdate');
+      } else {
+        setStatus('idle');
+        if (!silent) {
+          setError('Обновлений не найдено');
+          setTimeout(() => setError(null), 3000);
+        }
+      }
+    } catch (err) {
+      if (!silent) {
+        setError(err instanceof Error ? err.message : 'Ошибка проверки обновлений');
+        setStatus('error');
+      } else {
+        setStatus('idle');
+      }
+    }
+  }, []);
+
+  const downloadAndInstall = useCallback(async () => {
+    if (!updateInfo) return;
+
+    try {
+      setStatus('downloading');
+      setDownloadProgress(0);
+      setError(null);
+      totalBytes.current = 0;
+      downloadedBytes.current = 0;
+
+      await updateInfo.downloadAndInstall((event) => {
+        switch (event.event) {
+          case 'Started':
+            totalBytes.current = event.data.contentLength ?? 0;
+            setDownloadProgress(0);
+            setStatus('downloading');
+            break;
+          case 'Progress':
+            downloadedBytes.current += event.data.chunkLength;
+            if (totalBytes.current > 0) {
+              setDownloadProgress(
+                Math.min(100, (downloadedBytes.current / totalBytes.current) * 100)
+              );
+            }
+            break;
+          case 'Finished':
+            setStatus('installing');
+            break;
+        }
+      });
+
+      setStatus('installed');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка установки');
+      setStatus('error');
+    }
+  }, [updateInfo]);
+
+  const restart = useCallback(async () => {
+    try {
+      await relaunch();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка перезапуска');
+    }
+  }, []);
+
+  const dismiss = useCallback(() => {
+    setStatus('idle');
+    setUpdateInfo(null);
+    setDownloadProgress(0);
+    setError(null);
+  }, []);
+
+  // Auto-check on mount (silent)
+  useEffect(() => {
+    if (autoChecked.current) return;
+    autoChecked.current = true;
+
+    const timer = setTimeout(() => {
+      checkForUpdate(true);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [checkForUpdate]);
+
+  return {
+    status,
+    updateInfo,
+    downloadProgress,
+    error,
+    checkForUpdate,
+    downloadAndInstall,
+    restart,
+    dismiss,
+  };
+}
