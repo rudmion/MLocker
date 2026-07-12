@@ -61,11 +61,11 @@ export function UpdateNotification({
         </div>
 
         {/* Changelog */}
-        {/* {changelog && status === 'hasUpdate' && (
+        {changelog && status === 'hasUpdate' && (
           <div className="max-h-24 overflow-y-auto rounded-md bg-muted/50 p-2 text-xs text-muted-foreground">
             {changelog}
           </div>
-        )} */}
+        )}
 
         {/* Download progress */}
         {status === 'downloading' && (
