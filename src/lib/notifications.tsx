@@ -53,7 +53,7 @@ export const notifications = {
     }),
 
   updateCheckError: () =>
-    toast.error('Ошибка проверки, проверьте позже', {
+    toast.error('Не удалось проверить обновления. Попробуйте позже.', {
       icon: <RefreshCw className="text-red-500 pe-1" />,
     }),
 };

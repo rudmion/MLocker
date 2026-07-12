@@ -81,10 +81,12 @@ function App() {
 
   const handleCheckForUpdate = async () => {
     const result = await checkForUpdate(false);
-    setSettingsOpen(false);
-    if (result === 'none') {
+    if (result === 'update') {
+      setSettingsOpen(false);
+    } else if (result === 'none') {
       notifications.updateLatest();
     } else if (result === 'error') {
+      dismiss();
       notifications.updateCheckError();
     }
   };
