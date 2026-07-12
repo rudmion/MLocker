@@ -80,6 +80,71 @@ fn remove_dir_recursive(path: &std::path::Path) -> Result<(), String> {
     Ok(())
 }
 
+/// Remove old desktop shortcuts left by a previous NSIS installation.
+/// NSIS creates shortcuts named after `productName` (e.g. "MLocker.lnk").
+/// When updating, NSIS doesn't clean up old shortcuts, so we do it manually.
+fn remove_old_desktop_shortcuts(product_name: &str) {
+    if let Some(desktop) = dirs::desktop_dir() {
+        remove_shortcuts_in_dir(&desktop, product_name);
+    }
+    // Also check localized Desktop folder (e.g. "Рабочий стол")
+    if let Some(home) = dirs::home_dir() {
+        let localized = home.join("Desktop");
+        if localized.exists() {
+            remove_shortcuts_in_dir(&localized, product_name);
+        }
+    }
+}
+
+/// Remove old Start Menu shortcuts left by a previous NSIS installation.
+/// Tauri's NSIS creates a folder under Start Menu\Programs\{productName}.
+fn remove_old_start_menu_shortcuts(product_name: &str) {
+    if let Some(program_data) = dirs::data_dir() {
+        // Current user: %APPDATA%\Microsoft\Windows\Start Menu\Programs\{productName}
+        let user_start = program_data
+            .parent() // Roaming
+            .map(|p| p.join("Microsoft").join("Windows").join("Start Menu").join("Programs"))
+            .filter(|p| p.exists());
+        if let Some(start_menu) = user_start {
+            let app_folder = start_menu.join(product_name);
+            if app_folder.exists() {
+                let _ = remove_dir_recursive(&app_folder);
+            }
+        }
+
+        // All users: %PROGRAMDATA%\Microsoft\Windows\Start Menu\Programs\{productName}
+        if let Ok(program_data) = std::env::var("PROGRAMDATA") {
+            let all_start = std::path::PathBuf::from(&program_data)
+                .join("Microsoft")
+                .join("Windows")
+                .join("Start Menu")
+                .join("Programs");
+            if all_start.exists() {
+                let app_folder = all_start.join(product_name);
+                if app_folder.exists() {
+                    let _ = remove_dir_recursive(&app_folder);
+                }
+            }
+        }
+    }
+}
+
+/// Remove .lnk files matching the product name in a directory.
+fn remove_shortcuts_in_dir(dir: &std::path::Path, product_name: &str) {
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name_str = name.to_string_lossy();
+            if name_str.ends_with(".lnk") {
+                let stem = name_str.trim_end_matches(".lnk");
+                if stem.eq_ignore_ascii_case(product_name) {
+                    let _ = std::fs::remove_file(entry.path());
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UpdateInfo {
     pub has_update: bool,
@@ -435,7 +500,13 @@ pub async fn install_downloaded_update(app: AppHandle, file_path: String) -> Res
                 }
             }
 
-            // Step 4: Delete the installer from temp
+            // Step 4: Clean up old desktop and Start Menu shortcuts left by previous NSIS install.
+            // NSIS creates shortcuts on the desktop, but doesn't remove old ones during updates.
+            let product_name = "MLocker";
+            remove_old_desktop_shortcuts(product_name);
+            remove_old_start_menu_shortcuts(product_name);
+
+            // Step 5: Delete the installer from temp
             let _ = std::fs::remove_file(&installer_path);
 
             let _ = app_clone.emit(
