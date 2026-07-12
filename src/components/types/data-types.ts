@@ -12,6 +12,7 @@ export type Entry = {
   updatedAt: string;
   iconUrl: string | null;
   title: string;
+  description: string;
   url: string;
   favourites: boolean;
   login: string;

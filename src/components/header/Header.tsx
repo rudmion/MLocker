@@ -28,6 +28,7 @@ export function Header() {
 
   const [openSearch, setOpenSearch] = useState(false);
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [url, setUrl] = useState('');
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
@@ -36,6 +37,7 @@ export function Header() {
   useEffect(() => {
     if (!openCreate) {
       setTitle('');
+      setDescription('');
       setUrl('');
       setLogin('');
       setPassword('');
@@ -60,6 +62,7 @@ export function Header() {
       updatedAt: new Date().toISOString(),
       iconUrl: faviconUrl,
       title,
+      description: description || '',
       favourites: false,
       url,
       login,
@@ -71,6 +74,7 @@ export function Header() {
     });
 
     setTitle('');
+    setDescription('');
     setUrl('');
     setLogin('');
     setPassword('');
@@ -125,6 +129,8 @@ export function Header() {
             setOpen={setOpenCreate}
             title={title}
             setTitle={setTitle}
+            description={description}
+            setDescription={setDescription}
             url={url}
             setUrl={setUrl}
             login={login}

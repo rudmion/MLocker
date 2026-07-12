@@ -8,6 +8,7 @@ import { CheckCircle2, AlertCircle } from 'lucide-react';
 
 type InspectorFormState = {
   title: string;
+  description: string;
   url: string;
   login: string;
   password: string;
@@ -61,6 +62,7 @@ export function useInspector() {
 
     const initial = {
       title: entry.title,
+      description: entry.description ?? '',
       url: entry.url,
       login: entry.login,
       password: entry.password,
@@ -117,6 +119,7 @@ export function useInspector() {
 
     updateEntry(entry.sectionId, entry.id, {
       title: formData.title,
+      description: formData.description,
       url: formData.url,
       login: formData.login,
       password: formData.password,

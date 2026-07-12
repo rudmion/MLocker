@@ -30,6 +30,7 @@ import { CustomFields } from './CustomFields';
 
 import { CustomField } from '@/components/types/data-types';
 import { Button } from '../ui/button';
+import { Textarea } from '../ui/textarea';
 
 import { getPasswordSecurityLevel } from '@/utils/passwordSecurityLevel';
 import { copyToClipboard } from '@/utils/clipboard';
@@ -38,6 +39,7 @@ import { invoke } from '@tauri-apps/api/core';
 
 type InspectorFormState = {
   title: string;
+  description: string;
   url: string;
   login: string;
   password: string;
@@ -173,6 +175,18 @@ export function InspectorForm({
             />
           </InputGroup>
           {errors.title && <FieldError>{errors.title}</FieldError>}
+        </Field>
+
+        {/* DESCRIPTION */}
+        <Field className="flex-1">
+          <FieldLabel>Описание</FieldLabel>
+          <Textarea
+            value={formData.description}
+            onChange={(e) => updateField('description', e.target.value)}
+            placeholder="Введите описание"
+            maxLength={300}
+          />
+          <p className="text-xs text-muted-foreground text-right">{formData.description.length}/300</p>
         </Field>
 
         {/* URL */}

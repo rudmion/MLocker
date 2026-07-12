@@ -10,15 +10,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Field, FieldGroup, FieldError } from '@/components/ui/field';
-import {
-  Eye,
-  EyeOff,
-  RefreshCcw,
-  Loader2,
-  Check,
-} from 'lucide-react';
+import { Eye, EyeOff, RefreshCcw, Loader2, Check } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { getPasswordSecurityLevel } from '@/utils/passwordSecurityLevel';
 import { isValidUrl } from '@/utils/validUrl';
@@ -29,6 +24,8 @@ type Props = {
   setOpen: (v: boolean) => void;
   title: string;
   setTitle: (v: string) => void;
+  description: string;
+  setDescription: (v: string) => void;
   url: string;
   setUrl: (v: string) => void;
   login: string;
@@ -74,6 +71,8 @@ export function CreateRecordDialog({
   setOpen,
   title,
   setTitle,
+  description,
+  setDescription,
   url,
   setUrl,
   login,
@@ -194,7 +193,7 @@ export function CreateRecordDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-sm">
+      <DialogContent className="sm:max-w-sm flex flex-col max-h-[85vh]">
         <DialogHeader>
           <DialogTitle>Создание записи</DialogTitle>
           <DialogDescription className="sr-only">
@@ -204,155 +203,176 @@ export function CreateRecordDialog({
 
         <Separator />
 
-        <FieldGroup>
-          <Field>
-            <Label>
-              Наименование <span className="text-destructive">*</span>
-            </Label>
+        <div className="dialog-scroll flex-1 overflow-y-auto min-h-0">
+          <FieldGroup>
+            <Field>
+              <Label>
+                Наименование <span className="text-destructive">*</span>
+              </Label>
 
-            <Input
-              value={title}
-              onChange={(e) => {
-                setTitle(e.target.value);
-                clearError('title');
-              }}
-            />
-            {errors.title && <FieldError>{errors.title}</FieldError>}
-          </Field>
-
-          <Field>
-            <Label>URL</Label>
-
-            <div className="relative">
               <Input
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                className="pr-10"
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  clearError('title');
+                }}
               />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                {faviconStatus === 'downloading' && (
-                  <Loader2 size={16} className="animate-spin text-muted-foreground" />
-                )}
-                {faviconStatus === 'done' && (
-                  <Check size={16} className="text-green-500" />
-                )}
-              </div>
-            </div>
-          </Field>
+              {errors.title && <FieldError>{errors.title}</FieldError>}
+            </Field>
 
-          <Field>
-            <Label>
-              Логин <span className="text-destructive">*</span>
-            </Label>
+            <Field>
+              <Label>URL</Label>
 
-            <Input
-              value={login}
-              onChange={(e) => {
-                setLogin(e.target.value);
-                clearError('login');
-              }}
-            />
-            {errors.login && <FieldError>{errors.login}</FieldError>}
-          </Field>
-
-          <Field>
-            <Label>
-              Пароль <span className="text-destructive">*</span>
-            </Label>
-
-            <div className="flex gap-2">
-              <div className="relative flex-1">
+              <div className="relative">
                 <Input
-                  type="text"
-                  style={
-                    showPassword
-                      ? undefined
-                      : ({ WebkitTextSecurity: 'disc' } as React.CSSProperties)
-                  }
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    clearError('password');
-                  }}
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
                   className="pr-10"
                 />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {faviconStatus === 'downloading' && (
+                    <Loader2
+                      size={16}
+                      className="animate-spin text-muted-foreground"
+                    />
+                  )}
+                  {faviconStatus === 'done' && (
+                    <Check size={16} className="text-green-500" />
+                  )}
+                </div>
+              </div>
+            </Field>
 
-                <button
+            <Field>
+              <Label>
+                Логин <span className="text-destructive">*</span>
+              </Label>
+
+              <Input
+                value={login}
+                onChange={(e) => {
+                  setLogin(e.target.value);
+                  clearError('login');
+                }}
+              />
+              {errors.login && <FieldError>{errors.login}</FieldError>}
+            </Field>
+
+            <Field>
+              <Label>
+                Пароль <span className="text-destructive">*</span>
+              </Label>
+
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    type="text"
+                    style={
+                      showPassword
+                        ? undefined
+                        : ({
+                            WebkitTextSecurity: 'disc',
+                          } as React.CSSProperties)
+                    }
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      clearError('password');
+                    }}
+                    className="pr-10"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="
+                      absolute
+                      right-3
+                      top-1/2
+                      -translate-y-1/2
+                      text-muted-foreground
+                      hover:text-foreground
+                      transition-colors
+                    "
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={generatePassword}
                   type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  className="
-                    absolute
-                    right-3
-                    top-1/2
-                    -translate-y-1/2
-                    text-muted-foreground
-                    hover:text-foreground
-                    transition-colors
-                  "
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
+                  <RefreshCcw />
+                </Button>
               </div>
 
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={generatePassword}
-                type="button"
-              >
-                <RefreshCcw />
-              </Button>
-            </div>
+              {errors.password && <FieldError>{errors.password}</FieldError>}
 
-            {errors.password && <FieldError>{errors.password}</FieldError>}
+              {password.length > 0 && (
+                <div className="mt-4 flex items-center gap-3">
+                  <div className="relative h-16 w-16">
+                    <svg className="h-16 w-16 -rotate-90">
+                      <circle
+                        cx="32"
+                        cy="32"
+                        r={radius}
+                        stroke="#e5e7eb"
+                        strokeWidth="5"
+                        fill="transparent"
+                      />
 
-            {password.length > 0 && (
-              <div className="mt-4 flex items-center gap-3">
-                <div className="relative h-16 w-16">
-                  <svg className="h-16 w-16 -rotate-90">
-                    <circle
-                      cx="32"
-                      cy="32"
-                      r={radius}
-                      stroke="#e5e7eb"
-                      strokeWidth="5"
-                      fill="transparent"
-                    />
+                      <circle
+                        cx="32"
+                        cy="32"
+                        r={radius}
+                        stroke={strength.stroke}
+                        strokeWidth="5"
+                        fill="transparent"
+                        strokeLinecap="round"
+                        strokeDasharray={circumference}
+                        strokeDashoffset={offset}
+                        style={{
+                          transition: 'all 0.3s ease',
+                        }}
+                      />
+                    </svg>
 
-                    <circle
-                      cx="32"
-                      cy="32"
-                      r={radius}
-                      stroke={strength.stroke}
-                      strokeWidth="5"
-                      fill="transparent"
-                      strokeLinecap="round"
-                      strokeDasharray={circumference}
-                      strokeDashoffset={offset}
-                      style={{
-                        transition: 'all 0.3s ease',
-                      }}
-                    />
-                  </svg>
+                    <div className="absolute inset-0 flex items-center justify-center text-xs font-medium">
+                      {strength.progress}%
+                    </div>
+                  </div>
 
-                  <div className="absolute inset-0 flex items-center justify-center text-xs font-medium">
-                    {strength.progress}%
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      Сложность пароля
+                    </p>
+
+                    <p className={`font-medium ${strength.color}`}>
+                      {strength.label}
+                    </p>
                   </div>
                 </div>
+              )}
+            </Field>
 
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    Сложность пароля
-                  </p>
+            <Field>
+              <Label>Описание</Label>
 
-                  <p className={`font-medium ${strength.color}`}>
-                    {strength.label}
-                  </p>
-                </div>
-              </div>
-            )}
-          </Field>
-        </FieldGroup>
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Введите описание"
+                maxLength={300}
+              />
+              <p className="text-xs text-muted-foreground text-right">
+                {description.length}/300
+              </p>
+            </Field>
+          </FieldGroup>
+        </div>
 
         <DialogFooter>
           <Button onClick={handleSubmit} disabled={disabled}>
