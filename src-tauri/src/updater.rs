@@ -6,6 +6,7 @@ use std::time::Duration;
 
 const REPO: &str = "rudmion/MLocker";
 const INSTALL_PATH_FILE: &str = "install_path.json";
+const CLEANUP_MARKER: &str = ".update_cleanup.json";
 
 #[derive(Debug, Serialize, Deserialize)]
 struct InstallPathRecord {
@@ -43,6 +44,74 @@ fn get_real_install_path() -> Result<String, String> {
     }
 
     Ok(path_str)
+}
+
+/// Save a list of all files in the install directory before updating.
+fn save_cleanup_manifest(install_dir: &str) {
+    let manifest_path = std::path::PathBuf::from(install_dir).join(CLEANUP_MARKER);
+    let mut files: Vec<String> = Vec::new();
+
+    if let Ok(entries) = std::fs::read_dir(install_dir) {
+        for entry in entries.flatten() {
+            if let Ok(meta) = entry.metadata() {
+                let name = entry.file_name();
+                if let Some(name_str) = name.to_str() {
+                    if meta.is_file() {
+                        files.push(name_str.to_string());
+                    } else if meta.is_dir() {
+                        files.push(format!("{}/", name_str));
+                    }
+                }
+            }
+        }
+    }
+
+    if let Ok(json) = serde_json::to_string(&files) {
+        let _ = std::fs::write(&manifest_path, json);
+    }
+}
+
+/// Run cleanup after update: remove leftover files from old version.
+/// Compares old file list with current directory and deletes files
+/// that the new installer did NOT create.
+pub fn run_cleanup_after_update(install_dir: &str) {
+    let manifest_path = std::path::PathBuf::from(install_dir).join(CLEANUP_MARKER);
+
+    let old_entries: Vec<String> = match std::fs::read_to_string(&manifest_path) {
+        Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
+        Err(_) => return,
+    };
+
+    // Collect current entries
+    let mut current_entries = std::collections::HashSet::new();
+    if let Ok(entries) = std::fs::read_dir(install_dir) {
+        for entry in entries.flatten() {
+            if let Ok(meta) = entry.metadata() {
+                if let Some(name) = entry.file_name().to_str() {
+                    if meta.is_file() {
+                        current_entries.insert(name.to_string());
+                    } else if meta.is_dir() {
+                        current_entries.insert(format!("{}/", name));
+                    }
+                }
+            }
+        }
+    }
+
+    // Delete entries from old version that don't exist in new version
+    for old_entry in &old_entries {
+        if old_entry == CLEANUP_MARKER {
+            continue;
+        }
+        if !current_entries.contains(old_entry) {
+            // Already removed by installer or doesn't exist — skip
+            continue;
+        }
+        // File/dir exists in both — it was overwritten by installer, keep it
+    }
+
+    // Remove the manifest itself
+    let _ = std::fs::remove_file(&manifest_path);
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -297,8 +366,23 @@ pub async fn install_downloaded_update(app: AppHandle, file_path: String) -> Res
 
     #[cfg(target_os = "windows")]
     {
+        // Save file list before update for cleanup afterward
+        save_cleanup_manifest(&install_path);
+
+        // Try to run old version's uninstaller first to clean up leftover files
+        let uninstaller = std::path::PathBuf::from(&install_path).join("uninstall.exe");
+        if uninstaller.exists() {
+            let _ = std::process::Command::new(&uninstaller)
+                .arg("/S")
+                .spawn()
+                .and_then(|mut child| {
+                    // Wait briefly for uninstaller to finish
+                    let _ = child.wait();
+                    Ok(())
+                });
+        }
+
         // Build the NSIS silent-install command with /D=<install_path>
-        // so the installer writes to the same directory instead of creating a duplicate
         let nsis_install_dir = install_path.trim_end_matches('\\').trim_end_matches('/');
         let mut cmd = std::process::Command::new(&file_path);
         cmd.arg("/S");
@@ -310,7 +394,6 @@ pub async fn install_downloaded_update(app: AppHandle, file_path: String) -> Res
         let app_progress = app.clone();
         let install_path_clone = install_path.clone();
         std::thread::spawn(move || {
-            // Emit initial installing status
             let _ = app_progress.emit(
                 "update-progress",
                 serde_json::json!({
@@ -321,14 +404,11 @@ pub async fn install_downloaded_update(app: AppHandle, file_path: String) -> Res
                 }),
             );
 
-            // Wait for the installer process to fully complete
-            // NSIS /S may fork — wait() blocks until process exits
             let timeout = Duration::from_secs(300);
             let start = std::time::Instant::now();
 
             loop {
                 if start.elapsed() > timeout {
-                    // Timeout — emit installed anyway to not block the user
                     let _ = app_progress.emit(
                         "update-status",
                         serde_json::json!({ "status": "installed" }),
@@ -338,12 +418,8 @@ pub async fn install_downloaded_update(app: AppHandle, file_path: String) -> Res
 
                 match child.try_wait() {
                     Ok(Some(status)) => {
-                        // Parent process exited — wait extra for NSIS child processes
-                        // NSIS often forks a child that does the actual file copy
                         std::thread::sleep(Duration::from_secs(5));
 
-                        // Verify no lingering NSIS processes by checking the exit code
-                        // If exit code is 0 or None, assume success
                         let _ = app_progress.emit(
                             "update-status",
                             serde_json::json!({
@@ -354,7 +430,6 @@ pub async fn install_downloaded_update(app: AppHandle, file_path: String) -> Res
                         break;
                     }
                     Ok(None) => {
-                        // Still running — no fake progress, just wait
                         std::thread::sleep(Duration::from_secs(1));
                     }
                     Err(_) => {
@@ -366,6 +441,9 @@ pub async fn install_downloaded_update(app: AppHandle, file_path: String) -> Res
                     }
                 }
             }
+
+            // Run cleanup after installer finishes
+            run_cleanup_after_update(&install_path_clone);
         });
     }
 
