@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import type { Update } from '@tauri-apps/plugin-updater';
+import { toast } from 'sonner';
 
 export type UpdateStatus =
   | 'idle'
@@ -34,14 +35,13 @@ export function useUpdateChecker() {
       } else {
         setStatus('idle');
         if (!silent) {
-          setError('Обновлений не найдено');
-          setTimeout(() => setError(null), 3000);
+          toast.info('Приложение уже имеет последнюю версию');
         }
       }
     } catch (err) {
       if (!silent) {
-        setError(err instanceof Error ? err.message : 'Ошибка проверки обновлений');
-        setStatus('error');
+        toast.error('Не удалось проверить обновления. Попробуйте позже.');
+        setStatus('idle');
       } else {
         setStatus('idle');
       }

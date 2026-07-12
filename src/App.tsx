@@ -48,6 +48,14 @@ function App() {
     reset: resetAttempts,
   } = useMasterPasswordAttempts();
 
+  const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
+
+  useEffect(() => {
+    if (updateStatus === 'hasUpdate') {
+      setSettingsOpen(false);
+    }
+  }, [updateStatus, setSettingsOpen]);
+
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
