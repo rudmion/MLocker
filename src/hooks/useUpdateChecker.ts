@@ -21,32 +21,36 @@ export function useUpdateChecker() {
   const totalBytes = useRef(0);
   const downloadedBytes = useRef(0);
 
-  const checkForUpdate = useCallback(async (silent = true) => {
-    try {
-      setStatus('checking');
-      setError(null);
+  const checkForUpdate = useCallback(
+    async (silent = true): Promise<'update' | 'none' | 'error'> => {
+      try {
+        setStatus('checking');
+        setError(null);
 
-      const update = await check();
+        const update = await check();
 
-      if (update) {
-        setUpdateInfo(update);
-        setStatus('hasUpdate');
-      } else {
-        setStatus('idle');
-        if (!silent) {
-          setError('Обновлений не найдено');
-          setTimeout(() => setError(null), 3000);
+        if (update) {
+          setUpdateInfo(update);
+          setStatus('hasUpdate');
+          return 'update';
+        } else {
+          setStatus('idle');
+          return 'none';
         }
+      } catch (err) {
+        if (!silent) {
+          setError(
+            err instanceof Error ? err.message : 'Ошибка проверки обновлений',
+          );
+          setStatus('error');
+        } else {
+          setStatus('idle');
+        }
+        return 'error';
       }
-    } catch (err) {
-      if (!silent) {
-        setError(err instanceof Error ? err.message : 'Ошибка проверки обновлений');
-        setStatus('error');
-      } else {
-        setStatus('idle');
-      }
-    }
-  }, []);
+    },
+    [],
+  );
 
   const downloadAndInstall = useCallback(async () => {
     if (!updateInfo) return;
@@ -69,7 +73,10 @@ export function useUpdateChecker() {
             downloadedBytes.current += event.data.chunkLength;
             if (totalBytes.current > 0) {
               setDownloadProgress(
-                Math.min(100, (downloadedBytes.current / totalBytes.current) * 100)
+                Math.min(
+                  100,
+                  (downloadedBytes.current / totalBytes.current) * 100,
+                ),
               );
             }
             break;
@@ -101,13 +108,23 @@ export function useUpdateChecker() {
     setError(null);
   }, []);
 
-  // Auto-check on mount (silent)
+  // Auto-check once per day (silent)
   useEffect(() => {
     if (autoChecked.current) return;
     autoChecked.current = true;
 
+    const LAST_CHECK_KEY = 'mlocker-last-update-check';
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+    const lastCheck = localStorage.getItem(LAST_CHECK_KEY);
+    const now = Date.now();
+
+    if (lastCheck && now - Number(lastCheck) < ONE_DAY_MS) return;
+
     const timer = setTimeout(() => {
-      checkForUpdate(true);
+      checkForUpdate(true).then(() => {
+        localStorage.setItem(LAST_CHECK_KEY, String(now));
+      });
     }, 3000);
 
     return () => clearTimeout(timer);

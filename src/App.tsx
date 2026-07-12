@@ -15,12 +15,14 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useMasterPasswordAttempts } from '@/hooks/useMasterPasswordAttempts';
 import { useUpdateChecker } from '@/hooks/useUpdateChecker';
 import { UpdateNotification } from '@/components/update/UpdateNotification';
+import { notifications } from '@/lib/notifications';
 
 function App() {
   const loadData = useStore((s) => s.loadData);
   const masterPasswordEnabled = useSettingsStore(
     (s) => s.masterPasswordEnabled,
   );
+  const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
 
   useKeyboardShortcuts();
 
@@ -77,6 +79,16 @@ function App() {
     await loadData();
   };
 
+  const handleCheckForUpdate = async () => {
+    const result = await checkForUpdate(false);
+    setSettingsOpen(false);
+    if (result === 'none') {
+      notifications.updateLatest();
+    } else if (result === 'error') {
+      notifications.updateCheckError();
+    }
+  };
+
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <Toaster />
@@ -119,7 +131,7 @@ function App() {
       {masterState === 'unlocked' && (
         <TooltipProvider delayDuration={2000}>
           <SettingsDialog
-            onCheckForUpdate={() => checkForUpdate(false)}
+            onCheckForUpdate={handleCheckForUpdate}
             isCheckingUpdate={updateStatus === 'checking'}
           />
           <SidebarProvider>

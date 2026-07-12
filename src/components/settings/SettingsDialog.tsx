@@ -47,7 +47,9 @@ export function SettingsDialog({
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
-    getVersion().then(setVersion).catch(() => {});
+    getVersion()
+      .then(setVersion)
+      .catch(() => {});
   }, []);
 
   const themeOptions = [
@@ -157,22 +159,22 @@ export function SettingsDialog({
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={confirmDisableOpen} onOpenChange={setConfirmDisableOpen}>
+      <AlertDialog
+        open={confirmDisableOpen}
+        onOpenChange={setConfirmDisableOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Отключить мастер-пароль?</AlertDialogTitle>
             <AlertDialogDescription>
-              Без мастер-пароля ваши данные не защищены. Любой, кто получит доступ
-              к вашему компьютеру, сможет открыть приложение и просмотреть все
-              пароли. Это действие небезопасно.
+              Без мастер-пароля ваши данные не защищены. Любой, кто получит
+              доступ к вашему компьютеру, сможет открыть приложение и
+              просмотреть все пароли. Это действие небезопасно.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Оставить включённым</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={confirmDisable}
-            >
+            <AlertDialogAction variant="destructive" onClick={confirmDisable}>
               Отключить
             </AlertDialogAction>
           </AlertDialogFooter>

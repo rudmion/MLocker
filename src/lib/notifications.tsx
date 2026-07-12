@@ -1,5 +1,5 @@
 import { toast } from 'sonner';
-import { CircleCheckBig, CircleX, Trash2, AlertTriangle } from 'lucide-react';
+import { CircleCheckBig, CircleX, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
 
 export const notifications = {
   sectionCreated: () =>
@@ -45,5 +45,15 @@ export const notifications = {
   invalidMasterPassword: (message: string) =>
     toast.warning(message, {
       icon: <AlertTriangle className="text-yellow-500 pe-1" />,
+    }),
+
+  updateLatest: () =>
+    toast.info('Приложение уже имеет последнюю версию', {
+      icon: <CircleCheckBig className="text-green-500 pe-1" />,
+    }),
+
+  updateCheckError: () =>
+    toast.error('Ошибка проверки, проверьте позже', {
+      icon: <RefreshCw className="text-red-500 pe-1" />,
     }),
 };

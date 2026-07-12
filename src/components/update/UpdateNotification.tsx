@@ -1,5 +1,11 @@
 import { Button } from '@/components/ui/button';
-import { X, Download, RotateCcw, CheckCircle2, AlertCircle } from 'lucide-react';
+import {
+  X,
+  Download,
+  RotateCcw,
+  CheckCircle2,
+  AlertCircle,
+} from 'lucide-react';
 import type { UpdateStatus } from '@/hooks/useUpdateChecker';
 
 interface UpdateNotificationProps {
@@ -55,11 +61,11 @@ export function UpdateNotification({
         </div>
 
         {/* Changelog */}
-        {changelog && status === 'hasUpdate' && (
+        {/* {changelog && status === 'hasUpdate' && (
           <div className="max-h-24 overflow-y-auto rounded-md bg-muted/50 p-2 text-xs text-muted-foreground">
             {changelog}
           </div>
-        )}
+        )} */}
 
         {/* Download progress */}
         {status === 'downloading' && (
@@ -102,7 +108,12 @@ export function UpdateNotification({
         {/* Actions */}
         {status === 'hasUpdate' && (
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="flex-1" onClick={onDismiss}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={onDismiss}
+            >
               Позже
             </Button>
             <Button size="sm" className="flex-1" onClick={onInstall}>
@@ -119,7 +130,12 @@ export function UpdateNotification({
         )}
 
         {status === 'error' && (
-          <Button variant="outline" size="sm" className="w-full" onClick={onDismiss}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={onDismiss}
+          >
             Закрыть
           </Button>
         )}
