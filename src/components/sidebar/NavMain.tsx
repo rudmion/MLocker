@@ -98,15 +98,14 @@ export function NavMain() {
     <>
       <SidebarGroup>
         <SidebarGroupContent>
-          <div className="scroll-fade scrollbar-none overflow-y-auto scroll-fade-4">
-            <SidebarMenu className="gap-1 mt-1">
-              <SidebarGroupLabel>Разделы</SidebarGroupLabel>
-              <SidebarMenuItem>
-                <ConditionalTooltip content="Все записи" show={isCollapsed}>
-                  <SidebarMenuButton asChild>
-                    <button
-                      onClick={() => setSelectedSection('all')}
-                      className={`
+          <SidebarMenu className="gap-1 mt-1">
+            <SidebarGroupLabel>Разделы</SidebarGroupLabel>
+            <SidebarMenuItem>
+              <ConditionalTooltip content="Все записи" show={isCollapsed}>
+                <SidebarMenuButton asChild>
+                  <button
+                    onClick={() => setSelectedSection('all')}
+                    className={`
                       flex
                       items-center
                       gap-2
@@ -122,29 +121,26 @@ export function NavMain() {
                           : 'hover:bg-accent/50'
                       }
                     `}
-                    >
-                      <Layers className="size-4" />
+                  >
+                    <Layers className="size-4" />
 
-                      <span>Все записи</span>
-                    </button>
-                  </SidebarMenuButton>
-                </ConditionalTooltip>
-              </SidebarMenuItem>
+                    <span>Все записи</span>
+                  </button>
+                </SidebarMenuButton>
+              </ConditionalTooltip>
+            </SidebarMenuItem>
 
-              {sections.map((section) => {
-                const Icon =
-                  iconMap[section.icon as keyof typeof iconMap] || Folder;
+            {sections.map((section) => {
+              const Icon =
+                iconMap[section.icon as keyof typeof iconMap] || Folder;
 
-                return (
-                  <SidebarMenuItem key={section.id}>
-                    <ConditionalTooltip
-                      content={section.name}
-                      show={isCollapsed}
-                    >
-                      <SidebarMenuButton asChild>
-                        <button
-                          onClick={() => setSelectedSection(section.id)}
-                          className={`
+              return (
+                <SidebarMenuItem key={section.id}>
+                  <ConditionalTooltip content={section.name} show={isCollapsed}>
+                    <SidebarMenuButton asChild>
+                      <button
+                        onClick={() => setSelectedSection(section.id)}
+                        className={`
                             flex
                             items-center
                             gap-2
@@ -160,45 +156,44 @@ export function NavMain() {
                                 : 'hover:bg-accent/50'
                             }
                           `}
-                        >
-                          <Icon className="size-4 shrink-0" />
+                      >
+                        <Icon className="size-4 shrink-0" />
 
-                          <span className="truncate">{section.name}</span>
-                        </button>
-                      </SidebarMenuButton>
-                    </ConditionalTooltip>
+                        <span className="truncate">{section.name}</span>
+                      </button>
+                    </SidebarMenuButton>
+                  </ConditionalTooltip>
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <SidebarMenuAction
-                          showOnHover
-                          className="
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <SidebarMenuAction
+                        showOnHover
+                        className="
                             rounded-sm
                             data-[state=open]:bg-accent
                           "
-                        >
-                          <Ellipsis className="size-4" />
+                      >
+                        <Ellipsis className="size-4" />
 
-                          <span className="sr-only">Действия</span>
-                        </SidebarMenuAction>
-                      </DropdownMenuTrigger>
+                        <span className="sr-only">Действия</span>
+                      </SidebarMenuAction>
+                    </DropdownMenuTrigger>
 
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          variant="destructive"
-                          onClick={() => setDeleteTarget(section.id)}
-                        >
-                          <Trash2 className="size-4" />
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => setDeleteTarget(section.id)}
+                      >
+                        <Trash2 className="size-4" />
 
-                          <span>Удалить</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </div>
+                        <span>Удалить</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </SidebarMenuItem>
+              );
+            })}
+          </SidebarMenu>
         </SidebarGroupContent>
       </SidebarGroup>
 
