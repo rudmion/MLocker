@@ -186,12 +186,14 @@ export function InspectorForm({
             placeholder="Введите описание"
             maxLength={300}
           />
-          <p className="text-xs text-muted-foreground text-right">{formData.description.length}/300</p>
+          <p className="text-xs text-muted-foreground text-right">
+            {formData.description.length}/300
+          </p>
         </Field>
 
         {/* URL */}
         <Field className="flex-1">
-          <FieldLabel>Ресурс</FieldLabel>
+          <FieldLabel>URL</FieldLabel>
           <InputGroup>
             <InputGroupInput
               value={formData.url}

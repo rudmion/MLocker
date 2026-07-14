@@ -68,12 +68,21 @@ export function Inspector() {
       <Separator />
 
       <div className="inspector-scroll flex-1 overflow-y-auto">
-        <InspectorForm formData={formData} setFormData={setFormData} errors={errors} clearError={clearError} />
+        <InspectorForm
+          formData={formData}
+          setFormData={setFormData}
+          errors={errors}
+          clearError={clearError}
+        />
       </div>
 
       <Separator />
 
-      <InspectorFooter onAddField={handleAddField} onSave={handleSave} hasChanges={hasChanges} />
+      <InspectorFooter
+        onAddField={handleAddField}
+        onSave={handleSave}
+        hasChanges={hasChanges}
+      />
     </SheetContent>
   );
 }
