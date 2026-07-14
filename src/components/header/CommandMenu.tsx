@@ -8,10 +8,12 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { Button } from '@/components/ui/button';
-import { Copy } from 'lucide-react';
+import { Copy, Check } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { copyToClipboard } from '@/utils/clipboard';
+import { notifications } from '@/lib/notifications';
+import { useState } from 'react';
 
 type Props = {
   open: boolean;
@@ -21,6 +23,17 @@ type Props = {
 export function CommandMenu({ open, onOpenChange }: Props) {
   const data = useStore((state) => state.data);
   const sections = data?.sections ?? [];
+
+  const [copiedFields, setCopiedFields] = useState<Record<string, boolean>>({});
+
+  const handleCopy = (key: string, text: string) => {
+    copyToClipboard(text);
+    notifications.copied();
+    setCopiedFields((prev) => ({ ...prev, [key]: true }));
+    setTimeout(() => {
+      setCopiedFields((prev) => ({ ...prev, [key]: false }));
+    }, 2000);
+  };
 
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
@@ -67,10 +80,10 @@ export function CommandMenu({ open, onOpenChange }: Props) {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => copyToClipboard(record.login)}
+                            onClick={() => handleCopy(`${record.id}-login`, record.login)}
                             className="group/copy overflow-hidden transition-all duration-300 pe-2"
                           >
-                            <Copy />
+                            {copiedFields[`${record.id}-login`] ? <Check /> : <Copy />}
                             <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover/copy:max-w-[80px] group-hover/copy:opacity-100">
                               Логин
                             </span>
@@ -79,10 +92,10 @@ export function CommandMenu({ open, onOpenChange }: Props) {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => copyToClipboard(record.password)}
+                            onClick={() => handleCopy(`${record.id}-password`, record.password)}
                             className="group/copy overflow-hidden transition-all duration-300 pe-2"
                           >
-                            <Copy />
+                            {copiedFields[`${record.id}-password`] ? <Check /> : <Copy />}
                             <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover/copy:max-w-[80px] group-hover/copy:opacity-100">
                               Пароль
                             </span>

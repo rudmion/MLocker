@@ -193,7 +193,15 @@ export function CreateRecordDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-sm flex flex-col max-h-[85vh]">
+      <DialogContent
+        className="sm:max-w-sm flex flex-col max-h-[85vh]"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSubmit();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Создание записи</DialogTitle>
           <DialogDescription className="sr-only">

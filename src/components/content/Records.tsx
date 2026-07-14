@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { ItemMedia } from '@/components/ui/item';
 import {
   Copy,
+  Check,
   ChevronRight,
   ExternalLink,
   ShieldCheck,
@@ -14,6 +15,7 @@ import { Entry } from '@/components/types/data-types';
 import { open } from '@tauri-apps/plugin-shell';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { copyToClipboard } from '@/utils/clipboard';
+import { notifications } from '@/lib/notifications';
 import {
   Tooltip,
   TooltipContent,
@@ -63,6 +65,17 @@ export function Records() {
   const selectedSectionId = useStore((state) => state.selectedSectionId);
   const setSelectedEntry = useStore((state) => state.setSelectedEntry);
   const setInspectorOpen = useStore((state) => state.setInspectorOpen);
+
+  const [copiedFields, setCopiedFields] = useState<Record<string, boolean>>({});
+
+  const handleCopy = (key: string, text: string) => {
+    copyToClipboard(text);
+    notifications.copied();
+    setCopiedFields((prev) => ({ ...prev, [key]: true }));
+    setTimeout(() => {
+      setCopiedFields((prev) => ({ ...prev, [key]: false }));
+    }, 2000);
+  };
 
   const sections = data?.sections ?? [];
 
@@ -194,9 +207,9 @@ export function Records() {
                   size="sm"
                   variant="outline"
                   className="group/copy overflow-hidden transition-all duration-300 pe-2 "
-                  onClick={() => copyToClipboard(record.login)}
+                  onClick={() => handleCopy(`${record.id}-login`, record.login)}
                 >
-                  <Copy />
+                  {copiedFields[`${record.id}-login`] ? <Check /> : <Copy />}
                   <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover/copy:max-w-[80px] group-hover/copy:opacity-100 ">
                     Логин
                   </span>
@@ -206,9 +219,9 @@ export function Records() {
                   size="sm"
                   variant="outline"
                   className="group/copy overflow-hidden transition-all duration-300 pe-2"
-                  onClick={() => copyToClipboard(record.password)}
+                  onClick={() => handleCopy(`${record.id}-password`, record.password)}
                 >
-                  <Copy />
+                  {copiedFields[`${record.id}-password`] ? <Check /> : <Copy />}
                   <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover/copy:max-w-[80px] group-hover/copy:opacity-100">
                     Пароль
                   </span>

@@ -10,6 +10,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useState } from 'react';
 import { copyToClipboard } from '@/utils/clipboard';
+import { notifications } from '@/lib/notifications';
 import type { CustomField } from '@/components/types/data-types';
 
 interface Props {
@@ -19,6 +20,16 @@ interface Props {
 
 export function CustomFields({ fields, onChange }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [copiedFields, setCopiedFields] = useState<Record<string, boolean>>({});
+
+  const handleCopy = (key: string, text: string) => {
+    copyToClipboard(text);
+    notifications.copied();
+    setCopiedFields((prev) => ({ ...prev, [key]: true }));
+    setTimeout(() => {
+      setCopiedFields((prev) => ({ ...prev, [key]: false }));
+    }, 2000);
+  };
 
   const updateField = (
     id: string,
@@ -110,9 +121,9 @@ export function CustomFields({ fields, onChange }: Props) {
                       aria-label="Copy"
                       title="Copy"
                       size="icon-xs"
-                      onClick={() => copyToClipboard(field.value)}
+                      onClick={() => handleCopy(field.id, field.value)}
                     >
-                      <Copy className="h-4 w-4" />
+                      {copiedFields[field.id] ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                     </InputGroupButton>
                   </InputGroupAddon>
                 )}

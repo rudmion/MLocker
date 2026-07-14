@@ -27,6 +27,11 @@ export const notifications = {
       icon: <CircleCheckBig className="text-green-500 pe-1" />,
     }),
 
+  copied: () =>
+    toast.success('Скопировано', {
+      icon: <CircleCheckBig className="text-green-500 pe-1" />,
+    }),
+
   copyFailed: () =>
     toast.error('Не удалось скопировать', {
       icon: <CircleX className="text-red-500 pe-1" />,

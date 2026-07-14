@@ -34,6 +34,7 @@ import { Textarea } from '../ui/textarea';
 
 import { getPasswordSecurityLevel } from '@/utils/passwordSecurityLevel';
 import { copyToClipboard } from '@/utils/clipboard';
+import { notifications } from '@/lib/notifications';
 import { isValidUrl } from '@/utils/validUrl';
 import { invoke } from '@tauri-apps/api/core';
 
@@ -73,6 +74,16 @@ export function InspectorForm({
     'idle' | 'downloading' | 'done' | 'error'
   >('idle');
   const abortRef = useRef<AbortController | null>(null);
+  const [copiedFields, setCopiedFields] = useState<Record<string, boolean>>({});
+
+  const handleCopy = (key: string, text: string) => {
+    copyToClipboard(text);
+    notifications.copied();
+    setCopiedFields((prev) => ({ ...prev, [key]: true }));
+    setTimeout(() => {
+      setCopiedFields((prev) => ({ ...prev, [key]: false }));
+    }, 2000);
+  };
 
   if (!formData) return null;
 
@@ -241,9 +252,9 @@ export function InspectorForm({
               <InputGroupAddon align="inline-end">
                 <InputGroupButton
                   size="icon-xs"
-                  onClick={() => copyToClipboard(formData.login)}
+                  onClick={() => handleCopy('login', formData.login)}
                 >
-                  <Copy className="h-4 w-4" />
+                  {copiedFields['login'] ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </InputGroupButton>
               </InputGroupAddon>
             )}
@@ -297,9 +308,9 @@ export function InspectorForm({
 
                   <InputGroupButton
                     size="icon-xs"
-                    onClick={() => copyToClipboard(formData.password)}
+                    onClick={() => handleCopy('password', formData.password)}
                   >
-                    <Copy className="h-4 w-4" />
+                    {copiedFields['password'] ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   </InputGroupButton>
                 </InputGroupAddon>
               )}
