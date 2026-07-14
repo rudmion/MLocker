@@ -97,18 +97,22 @@ export function useUpdateChecker() {
   }, []);
 
   const dismiss = useCallback(() => {
+    const snoozeUntil = Date.now() + 2 * 24 * 60 * 60 * 1000; // 2 days
+    localStorage.setItem('updateSnoozeUntil', String(snoozeUntil));
     setStatus('idle');
     setUpdateInfo(null);
     setDownloadProgress(0);
     setError(null);
   }, []);
 
-  // Auto-check on mount (silent)
+  // Auto-check on mount (silent), respects snooze
   useEffect(() => {
     if (autoChecked.current) return;
     autoChecked.current = true;
 
     const timer = setTimeout(() => {
+      const snoozeUntil = Number(localStorage.getItem('updateSnoozeUntil') || '0');
+      if (Date.now() < snoozeUntil) return;
       checkForUpdate(true);
     }, 3000);
 
