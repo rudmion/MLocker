@@ -49,10 +49,24 @@ const { execSync } = require('child_process');
 try {
   console.log('\n--- Git ---');
   execSync('git add .', { cwd: rootDir, stdio: 'inherit' });
-  execSync(`git commit -m "chore: bump version to ${newVersion}"`, { cwd: rootDir, stdio: 'inherit' });
-  execSync(`git tag v${newVersion}`, { cwd: rootDir, stdio: 'inherit' });
-  console.log(`✓ Тег v${newVersion} создан`);
-  execSync('git push', { cwd: rootDir, stdio: 'inherit' });
+
+  const status = execSync('git status --porcelain', { cwd: rootDir, encoding: 'utf-8' }).trim();
+  if (status) {
+    execSync(`git commit -m "chore: bump version to ${newVersion}"`, { cwd: rootDir, stdio: 'inherit' });
+    console.log('✓ Коммит создан');
+  } else {
+    console.log('⚠ Нет изменений для коммита (возможно, версия уже обновлена)');
+  }
+
+  const tagExists = execSync(`git tag -l "v${newVersion}"`, { cwd: rootDir, encoding: 'utf-8' }).trim();
+  if (!tagExists) {
+    execSync(`git tag v${newVersion}`, { cwd: rootDir, stdio: 'inherit' });
+    console.log(`✓ Тег v${newVersion} создан`);
+  } else {
+    console.log(`⚠ Тег v${newVersion} уже существует`);
+  }
+
+  execSync('git push --set-upstream origin HEAD', { cwd: rootDir, stdio: 'inherit' });
   execSync(`git push origin v${newVersion}`, { cwd: rootDir, stdio: 'inherit' });
   console.log('✓ Всё запушено, релиз запустится автоматически');
 } catch (e) {
@@ -60,6 +74,6 @@ try {
   console.log('Выполните вручную:');
   console.log(`  git add . && git commit -m "chore: bump version to ${newVersion}"`);
   console.log(`  git tag v${newVersion}`);
-  console.log(`  git push && git push origin v${newVersion}`);
+  console.log(`  git push --set-upstream origin HEAD && git push origin v${newVersion}`);
   process.exit(1);
 }
