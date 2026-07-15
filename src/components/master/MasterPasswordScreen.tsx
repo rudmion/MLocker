@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Lock, Eye, EyeOff, KeyRound, Copy, Check } from 'lucide-react';
+import { Eye, EyeOff, KeyRound, Copy, Check } from 'lucide-react';
 import { notifications } from '@/lib/notifications';
 
 interface Props {
