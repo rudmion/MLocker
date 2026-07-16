@@ -37,6 +37,7 @@ import {
   Users,
   Plus,
   Layers,
+  PencilLine,
 } from 'lucide-react';
 
 import { useState } from 'react';
@@ -45,6 +46,15 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useStore } from '@/store/useStore';
 import { notifications } from '@/lib/notifications';
 
@@ -84,12 +94,24 @@ export function NavMain() {
 
   const isCollapsed = state === 'collapsed';
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [editTarget, setEditTarget] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const updateSection = useStore((state) => state.updateSection);
 
   const handleRemoveSection = (sectionId: string) => {
     removeSection(sectionId);
     setSelectedSection('all');
     setDeleteTarget(null);
     notifications.sectionDeleted();
+  };
+
+  const handleUpdateSection = () => {
+    if (!editTarget || !editName.trim()) return;
+
+    updateSection(editTarget, { name: editName.trim() });
+    setEditTarget(null);
+    setEditName('');
+    notifications.sectionUpdated();
   };
 
   const sections = data?.sections ?? [];
@@ -179,7 +201,13 @@ export function NavMain() {
                       </SidebarMenuAction>
                     </DropdownMenuTrigger>
 
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="end" className="w-full">
+                      <DropdownMenuItem onClick={() => { setEditTarget(section.id); setEditName(section.name); }}>
+                        <PencilLine className="size-4" />
+
+                        <span>Редактировать</span>
+                      </DropdownMenuItem>
+
                       <DropdownMenuItem
                         variant="destructive"
                         onClick={() => setDeleteTarget(section.id)}
@@ -220,6 +248,29 @@ export function NavMain() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!editTarget} onOpenChange={() => setEditTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Редактировать раздел</DialogTitle>
+          </DialogHeader>
+          <Input
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateSection(); }}
+            placeholder="Название раздела"
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditTarget(null)}>
+              Отмена
+            </Button>
+            <Button onClick={handleUpdateSection}>
+              Сохранить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

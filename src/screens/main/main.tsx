@@ -2,7 +2,6 @@ import { AppSidebar } from '@/components/sidebar/Sidebar';
 import { Header } from '@/components/header/Header';
 import { Content } from '@/components/content/Content';
 import { Separator } from '@/components/ui/separator';
-import { FloatingActionButton } from '@/components/header/FloatingActionButton';
 
 function Main() {
   return (
@@ -17,7 +16,6 @@ function Main() {
         </div>
         <Content />
       </div>
-      <FloatingActionButton />
     </div>
   );
 }

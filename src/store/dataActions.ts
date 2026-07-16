@@ -26,6 +26,17 @@ export const removeSection = (data: DataFile, sectionId: string): DataFile => ({
   sections: data.sections.filter((s) => s.id !== sectionId),
 });
 
+export const updateSection = (
+  data: DataFile,
+  sectionId: string,
+  updates: Partial<Pick<Section, 'name' | 'icon'>>,
+): DataFile => ({
+  ...data,
+  sections: data.sections.map((section) =>
+    section.id === sectionId ? { ...section, ...updates } : section,
+  ),
+});
+
 export const addEntry = (
   data: DataFile,
   sectionId: string,

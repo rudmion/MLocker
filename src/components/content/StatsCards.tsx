@@ -52,7 +52,7 @@ export function StatsCards() {
   }
 
   return (
-    <div className="flex w-full gap-4">
+    <div className="flex w-full gap-3">
       <Card className="w-1/2 h-full transition-all hover:shadow-md">
         <CardContent className="px-5">
           <div className="flex items-center gap-3">

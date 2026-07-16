@@ -12,6 +12,11 @@ export const notifications = {
       icon: <Trash2 className="text-red-500 pe-1" />,
     }),
 
+  sectionUpdated: () =>
+    toast.success('Раздел обновлён', {
+      icon: <CircleCheckBig className="text-green-500 pe-1" />,
+    }),
+
   recordCreated: () =>
     toast.success('Запись создана', {
       icon: <CircleCheckBig className="text-green-500 pe-1" />,

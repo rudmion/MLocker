@@ -3,7 +3,7 @@ import {
   SidebarGroupContent,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { Plus, Settings } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '../ui/button';
 import {
   Dialog,
@@ -16,7 +16,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useStore } from '@/store/useStore';
-import { useSettingsStore } from '@/store/useSettingsStore';
 import { useEffect, useState } from 'react';
 import { notifications } from '@/lib/notifications';
 import {
@@ -27,7 +26,6 @@ import {
 
 export function NavSecondary() {
   const addSection = useStore((state) => state.addSection);
-  const setSettingsOpen = useSettingsStore((state) => state.setSettingsOpen);
   const { state } = useSidebar();
 
   const [open, setOpen] = useState(false);
@@ -64,13 +62,7 @@ export function NavSecondary() {
   return (
     <SidebarGroup className="mt-auto">
       <SidebarGroupContent>
-        <div
-          className={`flex gap-2 transition-all duration-200 ease-in-out ${
-            state === 'collapsed'
-              ? 'flex-col items-center'
-              : 'flex-row items-center'
-          }`}
-        >
+        <div className="flex gap-2 transition-all duration-200 ease-in-out ">
           <Dialog open={open} onOpenChange={setOpen}>
             {state === 'collapsed' ? (
               <Tooltip>
@@ -85,9 +77,7 @@ export function NavSecondary() {
                     </Button>
                   </DialogTrigger>
                 </TooltipTrigger>
-                <TooltipContent side="right">
-                  Создать раздел
-                </TooltipContent>
+                <TooltipContent side="right">Создать раздел</TooltipContent>
               </Tooltip>
             ) : (
               <DialogTrigger asChild>
@@ -122,30 +112,6 @@ export function NavSecondary() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-          {state === 'collapsed' ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  onClick={() => setSettingsOpen(true)}
-                  className="transition-all duration-200"
-                >
-                  <Settings />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Настройки</TooltipContent>
-            </Tooltip>
-          ) : (
-            <Button
-              size="icon"
-              variant="outline"
-              onClick={() => setSettingsOpen(true)}
-              className="transition-all duration-200"
-            >
-              <Settings />
-            </Button>
-          )}
         </div>
       </SidebarGroupContent>
     </SidebarGroup>

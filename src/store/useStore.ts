@@ -22,6 +22,7 @@ type VaultStore = {
   setInspectorOpen: (open: boolean) => void;
 
   addSection: (section: Section) => void;
+  updateSection: (sectionId: string, updates: Partial<Pick<Section, 'name' | 'icon'>>) => void;
   removeSection: (sectionId: string) => void;
   addEntry: (sectionId: string, entry: Entry) => void;
   removeEntry: (sectionId: string, entryId: string) => void;
@@ -97,6 +98,17 @@ export const useStore = create<VaultStore>((set, get) => ({
     if (!current) return;
 
     const updated = actions.addSection(current, section);
+
+    set({ data: updated });
+
+    get().saveToRust(updated);
+  },
+
+  updateSection: (sectionId, updates) => {
+    const current = get().data;
+    if (!current) return;
+
+    const updated = actions.updateSection(current, sectionId, updates);
 
     set({ data: updated });
 

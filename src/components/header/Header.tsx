@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useStore } from '@/store/useStore';
 import { CommandMenu } from './CommandMenu';
 import { CreateRecordDialog } from './CreateRecordDialog';
-import { Search } from 'lucide-react';
+import { Plus, Search, Settings } from 'lucide-react';
 import { useCreateRecordDialogStore } from '@/store/createRecordDialog';
 import { getPasswordSecurityLevel } from '@/utils/passwordSecurityLevel';
 import { notifications } from '@/lib/notifications';
@@ -15,11 +15,13 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
+import { useSettingsStore } from '@/store/useSettingsStore';
 
 export function Header() {
   const data = useStore((state) => state.data);
   const addEntry = useStore((state) => state.addEntry);
   const selectedSectionId = useStore((state) => state.selectedSectionId);
+  const setSettingsOpen = useSettingsStore((state) => state.setSettingsOpen);
 
   const openCreate = useCreateRecordDialogStore((state) => state.open);
   const setOpenCreate = useCreateRecordDialogStore((state) => state.setOpen);
@@ -94,12 +96,32 @@ export function Header() {
             <TooltipContent>Меню</TooltipContent>
           </Tooltip>
           <Separator orientation="vertical" />
-          <p className="truncate w-[300px]">
+          <p className="truncate max-w-[300px]">
             {selectedSectionId === 'all' ? 'Все записи' : currentSection?.name}
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon-sm"
+                variant="outline"
+                onClick={() => setOpenCreate(true)}
+                className={`${selectedSectionId === 'all' ? 'hidden' : ''}`}
+              >
+                <Plus size={18} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              Создать запись
+              <KbdGroup>
+                <Kbd>Ctrl</Kbd>
+                <span>+</span>
+                <Kbd>+</Kbd>
+              </KbdGroup>
+            </TooltipContent>
+          </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -119,6 +141,15 @@ export function Header() {
               </KbdGroup>
             </TooltipContent>
           </Tooltip>
+
+          <Button
+            size="icon-sm"
+            variant="outline"
+            onClick={() => setSettingsOpen(true)}
+            className="transition-all duration-200"
+          >
+            <Settings />
+          </Button>
 
           <CommandMenu open={openSearch} onOpenChange={setOpenSearch} />
 
