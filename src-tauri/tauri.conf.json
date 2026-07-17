@@ -50,6 +50,9 @@
       ],
       "windows": {
         "installMode": "passive"
+      },
+      "linux": {
+        "installMode": "perUser"
       }
     }
   }
