@@ -16,6 +16,8 @@ import { Field, FieldGroup, FieldError } from '@/components/ui/field';
 import { Eye, EyeOff, RefreshCcw, Loader2, Check } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { getPasswordSecurityLevel } from '@/utils/passwordSecurityLevel';
+import { generatePassword } from '@/utils/generatePassword';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import { isValidUrl } from '@/utils/validUrl';
 import { invoke } from '@tauri-apps/api/core';
 
@@ -136,21 +138,10 @@ export function CreateRecordDialog({
     };
   }, [url, open, setFaviconUrl]);
 
-  const generatePassword = () => {
-    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const lower = 'abcdefghijklmnopqrstuvwxyz';
-    const numbers = '0123456789';
-    const symbols = '!@#$%^&*()-_=+[]{}|;:,.<>?';
-    const all = upper + lower + numbers + symbols;
+  const passwordOptions = useSettingsStore((s) => s.passwordOptions);
 
-    const array = new Uint8Array(20);
-    crypto.getRandomValues(array);
-
-    const generated = Array.from(array)
-      .map((byte) => all[byte % all.length])
-      .join('');
-
-    setPassword(generated);
+  const handleGeneratePassword = () => {
+    setPassword(generatePassword(passwordOptions));
     setErrors((prev) => ({ ...prev, password: undefined }));
   };
 
@@ -310,7 +301,7 @@ export function CreateRecordDialog({
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={generatePassword}
+                  onClick={handleGeneratePassword}
                   type="button"
                 >
                   <RefreshCcw />

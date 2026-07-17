@@ -1,12 +1,18 @@
 import { create } from 'zustand';
+import {
+  type PasswordOptions,
+  DEFAULT_PASSWORD_OPTIONS,
+} from '@/utils/generatePassword';
 
 type Settings = {
   masterPasswordEnabled: boolean;
-  settingsOpen: boolean;
+  passwordOptions: PasswordOptions;
 };
 
 type SettingsStore = Settings & {
+  settingsOpen: boolean;
   setMasterPasswordEnabled: (enabled: boolean) => void;
+  setPasswordOptions: (options: Partial<PasswordOptions>) => void;
   setSettingsOpen: (open: boolean) => void;
 };
 
@@ -16,12 +22,19 @@ const loadSettings = (): Settings => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
-      return JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      return {
+        masterPasswordEnabled: parsed.masterPasswordEnabled ?? true,
+        passwordOptions: {
+          ...DEFAULT_PASSWORD_OPTIONS,
+          ...parsed.passwordOptions,
+        },
+      };
     }
   } catch {}
   return {
     masterPasswordEnabled: true,
-    settingsOpen: false,
+    passwordOptions: DEFAULT_PASSWORD_OPTIONS,
   };
 };
 
@@ -31,6 +44,7 @@ const saveSettings = (settings: Settings) => {
       STORAGE_KEY,
       JSON.stringify({
         masterPasswordEnabled: settings.masterPasswordEnabled,
+        passwordOptions: settings.passwordOptions,
       }),
     );
   } catch {}
@@ -43,6 +57,12 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   setMasterPasswordEnabled: (enabled) => {
     set({ masterPasswordEnabled: enabled });
     saveSettings({ ...get(), masterPasswordEnabled: enabled });
+  },
+
+  setPasswordOptions: (options) => {
+    const newOptions = { ...get().passwordOptions, ...options };
+    set({ passwordOptions: newOptions });
+    saveSettings({ ...get(), passwordOptions: newOptions });
   },
 
   setSettingsOpen: (open) => set({ settingsOpen: open }),

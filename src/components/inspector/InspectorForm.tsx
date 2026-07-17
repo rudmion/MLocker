@@ -33,6 +33,8 @@ import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 
 import { getPasswordSecurityLevel } from '@/utils/passwordSecurityLevel';
+import { generatePassword } from '@/utils/generatePassword';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import { copyToClipboard } from '@/utils/clipboard';
 import { notifications } from '@/lib/notifications';
 import { isValidUrl } from '@/utils/validUrl';
@@ -150,21 +152,10 @@ export function InspectorForm({
     return <ShieldCheck size={18} color="#22c55e" />;
   };
 
-  const generatePassword = () => {
-    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const lower = 'abcdefghijklmnopqrstuvwxyz';
-    const numbers = '0123456789';
-    const symbols = '!@#$%^&*()-_=+[]{}|;:,.<>?';
-    const all = upper + lower + numbers + symbols;
+  const passwordOptions = useSettingsStore((s) => s.passwordOptions);
 
-    const array = new Uint8Array(20);
-    crypto.getRandomValues(array);
-
-    const password = Array.from(array)
-      .map((byte) => all[byte % all.length])
-      .join('');
-
-    updateField('password', password);
+  const handleGeneratePassword = () => {
+    updateField('password', generatePassword(passwordOptions));
   };
 
   return (
@@ -318,7 +309,7 @@ export function InspectorForm({
             {errors.password && <FieldError>{errors.password}</FieldError>}
           </Field>
 
-          <Button variant="outline" size="icon" onClick={generatePassword}>
+          <Button variant="outline" size="icon" onClick={handleGeneratePassword}>
             <RefreshCcw />
           </Button>
         </div>
