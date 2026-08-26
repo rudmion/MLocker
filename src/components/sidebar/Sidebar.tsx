@@ -6,7 +6,7 @@ import { Separator } from '@/components/ui/separator';
 
 export function AppSidebar() {
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" variant="floating">
       <Header />
       <Separator />
       <SidebarContent>

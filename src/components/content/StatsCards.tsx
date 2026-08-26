@@ -53,17 +53,17 @@ export function StatsCards() {
 
   return (
     <div className="flex w-full gap-3">
-      <Card className="w-1/2 h-full transition-all hover:shadow-md">
-        <CardContent className="px-5">
+      <Card className="w-1/2 h-full transition-all hover:shadow-md p-1">
+        <CardContent className="px-2 py-0.5">
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10">
+            <div className="flex items-center justify-center w-10 h-10 rounded-sm bg-primary/10">
               <Database className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <CardDescription className="text-sm tracking-wide">
+              <CardDescription className="tracking-wide">
                 Всего записей
               </CardDescription>
-              <CardTitle className="text-2xl font-semibold mt-0.5">
+              <CardTitle className="text-2xl font-semibold">
                 {records.length}
               </CardTitle>
             </div>
@@ -71,17 +71,17 @@ export function StatsCards() {
         </CardContent>
       </Card>
 
-      <Card className="w-1/2 h-full transition-all hover:shadow-md">
-        <CardContent className="px-5">
+      <Card className="w-1/2 h-full transition-all hover:shadow-md p-1">
+        <CardContent className="px-2 py-0.5">
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-destructive/10">
+            <div className="flex items-center justify-center w-10 h-10 rounded-sm bg-destructive/10">
               <ShieldAlert className="w-5 h-5 text-destructive" />
             </div>
             <div>
-              <CardDescription className="text-sm tracking-wide">
+              <CardDescription className="tracking-wide">
                 Слабые пароли
               </CardDescription>
-              <CardTitle className="text-2xl font-semibold mt-0.5">
+              <CardTitle className="text-2xl font-semibold">
                 {records.filter((record) => record.securityLevel <= 1).length}
               </CardTitle>
             </div>

@@ -9,7 +9,7 @@ export function Header() {
   return (
     <SidebarHeader>
       <SidebarMenu>
-        <SidebarMenuItem className="py-0.5">
+        <SidebarMenuItem>
           <SidebarMenuButton
             asChild
             className="data-[slot=sidebar-menu-button] hover:bg-transparent 

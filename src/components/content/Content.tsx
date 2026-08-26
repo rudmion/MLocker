@@ -9,7 +9,7 @@ export function Content() {
   const setInspectorOpen = useStore((state) => state.setInspectorOpen);
 
   return (
-    <div className="flex flex-col gap-3 px-3 my-3">
+    <div className="flex flex-col gap-2.5 px-0.75 mb-3 mt-0.5">
       <StatsCards />
       <Records />
       <Sheet open={inspectorOpen} onOpenChange={setInspectorOpen}>

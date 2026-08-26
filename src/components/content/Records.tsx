@@ -55,7 +55,9 @@ function TruncatedText({
           {text}
         </span>
       </TooltipTrigger>
-      <TooltipContent className="max-w-none whitespace-normal">{text}</TooltipContent>
+      <TooltipContent className="max-w-none whitespace-normal">
+        {text}
+      </TooltipContent>
     </Tooltip>
   );
 }
@@ -122,7 +124,7 @@ export function Records() {
           : '/material-icon-theme_folder-docs.svg';
 
         return (
-          <Card className="p-2 w-full" key={record.id}>
+          <Card className="p-1.5 w-full" key={record.id}>
             <CardContent
               className="
                 px-0
@@ -174,7 +176,8 @@ export function Records() {
                     alt="Logo"
                     className="w-full h-full object-contain"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = '/material-icon-theme_folder-docs.svg';
+                      (e.target as HTMLImageElement).src =
+                        '/material-icon-theme_folder-docs.svg';
                     }}
                   />
                 </ItemMedia>
@@ -204,32 +207,40 @@ export function Records() {
               >
                 {renderSecurityIcon(record.securityLevel)}
                 <Button
-                  size="sm"
                   variant="outline"
-                  className="group/copy overflow-hidden transition-all duration-300 pe-2 "
+                  className="group/copy overflow-hidden transition-all duration-300 gap-2 px-0"
                   onClick={() => handleCopy(`${record.id}-login`, record.login)}
                 >
-                  {copiedFields[`${record.id}-login`] ? <Check /> : <Copy />}
-                  <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover/copy:max-w-[80px] group-hover/copy:opacity-100 ">
+                  {copiedFields[`${record.id}-login`] ? (
+                    <Check className="ms-2" />
+                  ) : (
+                    <Copy className="ms-2" />
+                  )}
+                  <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover/copy:max-w-[80px] group-hover/copy:opacity-100 group-hover/copy:pe-2">
                     Логин
                   </span>
                 </Button>
 
                 <Button
-                  size="sm"
                   variant="outline"
-                  className="group/copy overflow-hidden transition-all duration-300 pe-2"
-                  onClick={() => handleCopy(`${record.id}-password`, record.password)}
+                  className="group/copy overflow-hidden transition-all duration-300 gap-2 px-0"
+                  onClick={() =>
+                    handleCopy(`${record.id}-password`, record.password)
+                  }
                 >
-                  {copiedFields[`${record.id}-password`] ? <Check /> : <Copy />}
-                  <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover/copy:max-w-[80px] group-hover/copy:opacity-100">
+                  {copiedFields[`${record.id}-password`] ? (
+                    <Check className="ms-2" />
+                  ) : (
+                    <Copy className="ms-2" />
+                  )}
+                  <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover/copy:max-w-[80px] group-hover/copy:opacity-100 group-hover/copy:pe-2">
                     Пароль
                   </span>
                 </Button>
 
                 <Button
                   variant="outline"
-                  size="icon-sm"
+                  size="icon"
                   onClick={() => {
                     setSelectedEntry(record.id);
                     setInspectorOpen(true);

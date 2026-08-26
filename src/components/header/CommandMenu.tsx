@@ -68,7 +68,8 @@ export function CommandMenu({ open, onOpenChange }: Props) {
                             alt=""
                             className="w-5 h-5 object-contain"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/material-icon-theme_folder-docs.svg';
+                              (e.target as HTMLImageElement).src =
+                                '/material-icon-theme_folder-docs.svg';
                             }}
                           />
                           <span className="w-100 truncate whitespace-nowrap overflow-hidden">
@@ -78,25 +79,38 @@ export function CommandMenu({ open, onOpenChange }: Props) {
 
                         <div className="ml-auto flex items-center gap-2">
                           <Button
-                            size="sm"
                             variant="outline"
-                            onClick={() => handleCopy(`${record.id}-login`, record.login)}
-                            className="group/copy overflow-hidden transition-all duration-300 pe-2"
+                            onClick={() =>
+                              handleCopy(`${record.id}-login`, record.login)
+                            }
+                            className="group/copy overflow-hidden transition-all duration-300 gap-2 px-0"
                           >
-                            {copiedFields[`${record.id}-login`] ? <Check /> : <Copy />}
-                            <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover/copy:max-w-[80px] group-hover/copy:opacity-100">
+                            {copiedFields[`${record.id}-login`] ? (
+                              <Check className="ms-2" />
+                            ) : (
+                              <Copy className="ms-2" />
+                            )}
+                            <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover/copy:max-w-[80px] group-hover/copy:opacity-100 group-hover/copy:pe-2">
                               Логин
                             </span>
                           </Button>
 
                           <Button
-                            size="sm"
                             variant="outline"
-                            onClick={() => handleCopy(`${record.id}-password`, record.password)}
-                            className="group/copy overflow-hidden transition-all duration-300 pe-2"
+                            onClick={() =>
+                              handleCopy(
+                                `${record.id}-password`,
+                                record.password,
+                              )
+                            }
+                            className="group/copy overflow-hidden transition-all duration-300 gap-2 px-0"
                           >
-                            {copiedFields[`${record.id}-password`] ? <Check /> : <Copy />}
-                            <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover/copy:max-w-[80px] group-hover/copy:opacity-100">
+                            {copiedFields[`${record.id}-password`] ? (
+                              <Check className="ms-2" />
+                            ) : (
+                              <Copy className="ms-2" />
+                            )}
+                            <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-300 group-hover/copy:max-w-[80px] group-hover/copy:opacity-100 group-hover/copy:pe-2">
                               Пароль
                             </span>
                           </Button>

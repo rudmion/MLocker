@@ -132,7 +132,7 @@ export function NavMain() {
                       items-center
                       gap-2
                       w-full
-                      rounded-md
+                      rounded-sm
                       px-2
                       py-1.5
                       transition-colors
@@ -167,7 +167,7 @@ export function NavMain() {
                             items-center
                             gap-2
                             w-full
-                            rounded-md
+                            rounded-sm
                             px-2
                             py-1.5
                             transition-colors
@@ -191,7 +191,7 @@ export function NavMain() {
                       <SidebarMenuAction
                         showOnHover
                         className="
-                            rounded-sm
+                            rounded
                             data-[state=open]:bg-accent
                           "
                       >
@@ -202,7 +202,12 @@ export function NavMain() {
                     </DropdownMenuTrigger>
 
                     <DropdownMenuContent align="end" className="w-full">
-                      <DropdownMenuItem onClick={() => { setEditTarget(section.id); setEditName(section.name); }}>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setEditTarget(section.id);
+                          setEditName(section.name);
+                        }}
+                      >
                         <PencilLine className="size-4" />
 
                         <span>Редактировать</span>
@@ -257,7 +262,9 @@ export function NavMain() {
           <Input
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateSection(); }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleUpdateSection();
+            }}
             placeholder="Название раздела"
             autoFocus
           />
@@ -265,9 +272,7 @@ export function NavMain() {
             <Button variant="outline" onClick={() => setEditTarget(null)}>
               Отмена
             </Button>
-            <Button onClick={handleUpdateSection}>
-              Сохранить
-            </Button>
+            <Button onClick={handleUpdateSection}>Сохранить</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

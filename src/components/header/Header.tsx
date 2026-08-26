@@ -87,15 +87,15 @@ export function Header() {
 
   return (
     <>
-      <div className="flex justify-between gap-10 py-3">
-        <div className="flex items-center gap-3">
+      <div className="flex justify-between gap-10 pt-1.75 pb-1.5">
+        <div className="flex items-center gap-2">
           <Tooltip>
             <TooltipTrigger asChild>
-              <SidebarTrigger variant="outline" size="icon-sm" />
+              <SidebarTrigger variant="outline" size="icon" />
             </TooltipTrigger>
             <TooltipContent>Меню</TooltipContent>
           </Tooltip>
-          <Separator orientation="vertical" />
+          {/* <Separator orientation="vertical" /> */}
           <p className="truncate max-w-[300px]">
             {selectedSectionId === 'all' ? 'Все записи' : currentSection?.name}
           </p>
@@ -105,7 +105,7 @@ export function Header() {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                size="icon-sm"
+                size="icon"
                 variant="outline"
                 onClick={() => setOpenCreate(true)}
                 className={`${selectedSectionId === 'all' ? 'hidden' : ''}`}
@@ -125,7 +125,7 @@ export function Header() {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                size="icon-sm"
+                size="icon"
                 variant="outline"
                 onClick={() => setOpenSearch(true)}
               >
@@ -143,7 +143,7 @@ export function Header() {
           </Tooltip>
 
           <Button
-            size="icon-sm"
+            size="icon"
             variant="outline"
             onClick={() => setSettingsOpen(true)}
             className="transition-all duration-200"
