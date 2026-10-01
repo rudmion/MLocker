@@ -27,6 +27,7 @@ function App() {
   const {
     status: updateStatus,
     updateInfo,
+    releaseNotes,
     downloadProgress,
     error: updateError,
     checkForUpdate,
@@ -93,7 +94,7 @@ function App() {
           status={updateStatus}
           currentVersion={updateInfo?.currentVersion ?? ''}
           latestVersion={updateInfo?.version ?? ''}
-          changelog={updateInfo?.body ?? null}
+          changelog={releaseNotes}
           downloadProgress={downloadProgress}
           error={updateError}
           onInstall={downloadAndInstall}

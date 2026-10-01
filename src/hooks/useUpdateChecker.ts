@@ -16,11 +16,37 @@ export type UpdateStatus =
 export function useUpdateChecker() {
   const [status, setStatus] = useState<UpdateStatus>('idle');
   const [updateInfo, setUpdateInfo] = useState<Update | null>(null);
+  const [releaseNotes, setReleaseNotes] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const autoChecked = useRef(false);
   const totalBytes = useRef(0);
   const downloadedBytes = useRef(0);
+
+  const fetchReleaseNotes = useCallback(
+    async (version: string, body?: string | null) => {
+      if (body && body.trim()) {
+        setReleaseNotes(body.trim());
+        return;
+      }
+      try {
+        const res = await fetch(
+          `https://api.github.com/repos/rudmion/MLocker/releases/tags/v${version}`,
+          { headers: { Accept: 'application/vnd.github+json' } },
+        );
+        if (!res.ok) throw new Error(String(res.status));
+        const data = await res.json();
+        setReleaseNotes(
+          typeof data.body === 'string' && data.body.trim()
+            ? data.body.trim()
+            : null,
+        );
+      } catch {
+        setReleaseNotes(null);
+      }
+    },
+    [],
+  );
 
   const checkForUpdate = useCallback(async (silent = true) => {
     try {
@@ -32,6 +58,7 @@ export function useUpdateChecker() {
       if (update) {
         setUpdateInfo(update);
         setStatus('hasUpdate');
+        void fetchReleaseNotes(update.version, update.body);
       } else {
         setStatus('idle');
         if (!silent) {
@@ -46,7 +73,7 @@ export function useUpdateChecker() {
         setStatus('idle');
       }
     }
-  }, []);
+  }, [fetchReleaseNotes]);
 
   const downloadAndInstall = useCallback(async () => {
     if (!updateInfo) return;
@@ -101,6 +128,7 @@ export function useUpdateChecker() {
     localStorage.setItem('updateSnoozeUntil', String(snoozeUntil));
     setStatus('idle');
     setUpdateInfo(null);
+    setReleaseNotes(null);
     setDownloadProgress(0);
     setError(null);
   }, []);
@@ -122,6 +150,7 @@ export function useUpdateChecker() {
   return {
     status,
     updateInfo,
+    releaseNotes,
     downloadProgress,
     error,
     checkForUpdate,

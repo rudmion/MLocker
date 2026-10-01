@@ -13,9 +13,9 @@
     "windows": [
       {
         "title": "MLocker",
-        "width": 800,
+        "width": 770,
         "height": 570,
-        "minWidth": 900,
+        "minWidth": 770,
         "minHeight": 570,
         "resizable": true
       }

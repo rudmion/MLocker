@@ -1,5 +1,4 @@
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Separator } from '@/components/ui/separator';
 import { Button } from '../ui/button';
 import { useEffect, useState } from 'react';
 import { useStore } from '@/store/useStore';

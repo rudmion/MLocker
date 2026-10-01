@@ -26,6 +26,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Read release notes
+        id: meta
+        run: node scripts/release-meta.cjs
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -53,8 +57,8 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'MLocker ${{ github.ref_name }}'
-          releaseBody: 'См. CHANGELOG для деталей обновления'
+          releaseName: ${{ steps.meta.outputs.name }}
+          releaseBody: ${{ steps.meta.outputs.body }}
           releaseDraft: false
           prerelease: false
           createUpdaterArtifacts: true

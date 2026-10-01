@@ -62,9 +62,8 @@ export function UpdateNotification({
 
         {/* Changelog */}
         {changelog && status === 'hasUpdate' && (
-          <div className="max-h-24 overflow-y-auto rounded-md bg-muted/50 p-2 text-xs text-muted-foreground">
-            {/* {changelog} */}
-            ""
+          <div className="max-h-40 space-y-1 overflow-y-auto whitespace-pre-wrap rounded-md bg-muted/50 p-2 text-xs leading-relaxed text-muted-foreground">
+            {changelog}
           </div>
         )}
 

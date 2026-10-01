@@ -1,7 +1,6 @@
 import { AppSidebar } from '@/components/sidebar/Sidebar';
 import { Header } from '@/components/header/Header';
 import { Content } from '@/components/content/Content';
-import { Separator } from '@/components/ui/separator';
 
 function Main() {
   return (
@@ -10,7 +9,7 @@ function Main() {
         <AppSidebar />
       </div>
       <div className="section-content w-full">
-        <div className="sticky top-0 z-50 bg-background px-0.5">
+        <div className="sticky top-0 z-50 bg-background/50 backdrop-blur-md px-0.5">
           <Header />
           {/* <Separator /> */}
         </div>
