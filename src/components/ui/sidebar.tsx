@@ -24,8 +24,7 @@ import {
 } from '@/components/ui/tooltip';
 import { PanelLeftIcon } from 'lucide-react';
 
-const SIDEBAR_COOKIE_NAME = 'sidebar_state';
-const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
+const SIDEBAR_STORAGE_KEY = 'mlocker-sidebar-open';
 const SIDEBAR_WIDTH = '16rem';
 const SIDEBAR_WIDTH_MOBILE = '18rem';
 const SIDEBAR_WIDTH_ICON = '3rem';
@@ -70,7 +69,17 @@ function SidebarProvider({
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
-  const [_open, _setOpen] = React.useState(defaultOpen);
+  // The desktop expanded/collapsed state is persisted to localStorage so it
+  // survives app restarts.
+  const [_open, _setOpen] = React.useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(SIDEBAR_STORAGE_KEY);
+      if (saved !== null) return saved === 'true';
+    } catch {
+      // localStorage unavailable — fall back to defaultOpen.
+    }
+    return defaultOpen;
+  });
   const open = openProp ?? _open;
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
@@ -81,8 +90,12 @@ function SidebarProvider({
         _setOpen(openState);
       }
 
-      // This sets the cookie to keep the sidebar state.
-      document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+      // Persist the sidebar state so it survives app restarts.
+      try {
+        localStorage.setItem(SIDEBAR_STORAGE_KEY, String(openState));
+      } catch {
+        // Ignore storage errors (private mode, quota, etc.).
+      }
     },
     [setOpenProp, open],
   );
