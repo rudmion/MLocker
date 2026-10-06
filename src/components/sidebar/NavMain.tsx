@@ -27,18 +27,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-import {
-  Ellipsis,
-  Trash2,
-  Folder,
-  Book,
-  Wallet,
-  Briefcase,
-  Users,
-  Plus,
-  Layers,
-  PencilLine,
-} from 'lucide-react';
+import { Ellipsis, Trash2, Layers, PencilLine } from 'lucide-react';
 
 import { useState } from 'react';
 import {
@@ -55,17 +44,10 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { IconPicker } from '@/components/icon-picker';
+import { DEFAULT_SECTION_ICON, getSectionIcon } from '@/lib/section-icons';
 import { useStore } from '@/store/useStore';
 import { notifications } from '@/lib/notifications';
-
-const iconMap = {
-  Folder,
-  Book,
-  Wallet,
-  Briefcase,
-  Users,
-  Plus,
-};
 
 function ConditionalTooltip({
   children,
@@ -96,6 +78,7 @@ export function NavMain() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [editIcon, setEditIcon] = useState(DEFAULT_SECTION_ICON);
   const updateSection = useStore((state) => state.updateSection);
 
   const handleRemoveSection = (sectionId: string) => {
@@ -105,12 +88,20 @@ export function NavMain() {
     notifications.sectionDeleted();
   };
 
+  const closeEditDialog = () => {
+    setEditTarget(null);
+    setEditName('');
+    setEditIcon(DEFAULT_SECTION_ICON);
+  };
+
   const handleUpdateSection = () => {
     if (!editTarget || !editName.trim()) return;
 
-    updateSection(editTarget, { name: editName.trim() });
-    setEditTarget(null);
-    setEditName('');
+    updateSection(editTarget, {
+      name: editName.trim(),
+      icon: editIcon || DEFAULT_SECTION_ICON,
+    });
+    closeEditDialog();
     notifications.sectionUpdated();
   };
 
@@ -153,8 +144,7 @@ export function NavMain() {
             </SidebarMenuItem>
 
             {sections.map((section) => {
-              const Icon =
-                iconMap[section.icon as keyof typeof iconMap] || Folder;
+              const Icon = getSectionIcon(section.icon);
 
               return (
                 <SidebarMenuItem key={section.id}>
@@ -206,6 +196,7 @@ export function NavMain() {
                         onClick={() => {
                           setEditTarget(section.id);
                           setEditName(section.name);
+                          setEditIcon(section.icon || DEFAULT_SECTION_ICON);
                         }}
                       >
                         <PencilLine className="size-4" />
@@ -254,22 +245,30 @@ export function NavMain() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog open={!!editTarget} onOpenChange={() => setEditTarget(null)}>
+      <Dialog
+        open={!!editTarget}
+        onOpenChange={(next) => {
+          if (!next) closeEditDialog();
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Редактировать раздел</DialogTitle>
           </DialogHeader>
-          <Input
-            value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleUpdateSection();
-            }}
-            placeholder="Название раздела"
-            autoFocus
-          />
+          <div className="flex gap-2">
+            <IconPicker value={editIcon} onChange={setEditIcon} />
+            <Input
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleUpdateSection();
+              }}
+              placeholder="Название раздела"
+              autoFocus
+            />
+          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditTarget(null)}>
+            <Button variant="outline" onClick={closeEditDialog}>
               Отмена
             </Button>
             <Button onClick={handleUpdateSection}>Сохранить</Button>

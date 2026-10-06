@@ -15,6 +15,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { IconPicker } from '@/components/icon-picker';
+import { DEFAULT_SECTION_ICON } from '@/lib/section-icons';
 import { useStore } from '@/store/useStore';
 import { useEffect, useState } from 'react';
 import { notifications } from '@/lib/notifications';
@@ -30,10 +32,12 @@ export function NavSecondary() {
 
   const [open, setOpen] = useState(false);
   const [sectionName, setSectionName] = useState('');
+  const [sectionIcon, setSectionIcon] = useState(DEFAULT_SECTION_ICON);
 
   useEffect(() => {
     if (!open) {
       setSectionName('');
+      setSectionIcon(DEFAULT_SECTION_ICON);
     }
   }, [open]);
 
@@ -50,11 +54,12 @@ export function NavSecondary() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       name: sectionName,
-      icon: 'Folder',
+      icon: sectionIcon,
       entries: [],
     };
     addSection(newSection);
     setSectionName('');
+    setSectionIcon(DEFAULT_SECTION_ICON);
     setOpen(false);
     notifications.sectionCreated();
   };
@@ -98,15 +103,18 @@ export function NavSecondary() {
                   понятное имя, чтобы легко ориентироваться.
                 </DialogDescription>
               </DialogHeader>
-              <Input
-                placeholder="Введите название раздела"
-                value={sectionName}
-                onChange={(e) => setSectionName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') createSection();
-                }}
-                autoFocus
-              />
+              <div className="flex gap-2">
+                <IconPicker value={sectionIcon} onChange={setSectionIcon} />
+                <Input
+                  placeholder="Введите название раздела"
+                  value={sectionName}
+                  onChange={(e) => setSectionName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') createSection();
+                  }}
+                  autoFocus
+                />
+              </div>
               <DialogFooter>
                 <Button onClick={createSection}>Создать</Button>
               </DialogFooter>
