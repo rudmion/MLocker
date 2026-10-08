@@ -1,0 +1,106 @@
+import { useEffect, useState } from 'react';
+import { Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { Input } from '@/components/ui/input';
+import { IconPicker } from '@/components/icon-picker';
+import { DEFAULT_SECTION_ICON } from '@/lib/section-icons';
+import { useStore } from '@/store/useStore';
+import { notifications } from '@/lib/notifications';
+
+export function CreateSectionButton() {
+  const addSection = useStore((state) => state.addSection);
+
+  const [open, setOpen] = useState(false);
+  const [sectionName, setSectionName] = useState('');
+  const [sectionIcon, setSectionIcon] = useState(DEFAULT_SECTION_ICON);
+
+  useEffect(() => {
+    if (!open) {
+      setSectionName('');
+      setSectionIcon(DEFAULT_SECTION_ICON);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    const handler = () => setOpen(true);
+    document.addEventListener('open-create-section', handler);
+    return () => document.removeEventListener('open-create-section', handler);
+  }, []);
+
+  const createSection = () => {
+    if (!sectionName.trim()) return;
+    const newSection = {
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      name: sectionName,
+      icon: sectionIcon,
+      entries: [],
+    };
+    addSection(newSection);
+    setSectionName('');
+    setSectionIcon(DEFAULT_SECTION_ICON);
+    setOpen(false);
+    notifications.sectionCreated();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DialogTrigger asChild>
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              className="mx-auto shrink-0"
+              aria-label="Создать раздел"
+            >
+              <Plus />
+            </Button>
+          </DialogTrigger>
+        </TooltipTrigger>
+        <TooltipContent side="right">Создать раздел</TooltipContent>
+      </Tooltip>
+
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Создать новый раздел</DialogTitle>
+          <DialogDescription>
+            Внутри раздела будут храниться ваши пароли и логины. Дайте ему
+            понятное имя, чтобы легко ориентироваться.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex gap-2">
+          <IconPicker value={sectionIcon} onChange={setSectionIcon} />
+          <Input
+            placeholder="Введите название раздела"
+            value={sectionName}
+            onChange={(e) => setSectionName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') createSection();
+            }}
+            autoFocus
+          />
+        </div>
+        <DialogFooter>
+          <Button onClick={createSection}>Создать</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

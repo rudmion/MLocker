@@ -40,9 +40,7 @@ export function DeleteDialog({ onDelete }: Props) {
         <AlertDialogFooter>
           <AlertDialogCancel variant="outline">Отмена</AlertDialogCancel>
 
-          <AlertDialogAction variant="destructive" onClick={onDelete}>
-            Удалить
-          </AlertDialogAction>
+          <AlertDialogAction onClick={onDelete}>Удалить</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

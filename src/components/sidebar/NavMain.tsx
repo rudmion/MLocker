@@ -5,7 +5,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuAction,
-  SidebarGroupLabel,
   useSidebar,
 } from '@/components/ui/sidebar';
 
@@ -45,6 +44,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { IconPicker } from '@/components/icon-picker';
+import { CreateSectionButton } from './CreateSectionButton';
 import { DEFAULT_SECTION_ICON, getSectionIcon } from '@/lib/section-icons';
 import { useStore } from '@/store/useStore';
 import { notifications } from '@/lib/notifications';
@@ -112,7 +112,12 @@ export function NavMain() {
       <SidebarGroup>
         <SidebarGroupContent>
           <SidebarMenu className="gap-1 mt-1">
-            <SidebarGroupLabel>Разделы</SidebarGroupLabel>
+            <div className="flex items-center gap-1 mb-1 transition-all duration-200 ease-linear group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:mb-1.5">
+              <span className="flex h-8 min-w-0 flex-1 items-center truncate px-2 text-xs font-medium text-sidebar-foreground/70 transition-[opacity,padding] duration-200 ease-linear group-data-[collapsible=icon]:grow-0 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:pointer-events-none">
+                Разделы
+              </span>
+              <CreateSectionButton />
+            </div>
             <SidebarMenuItem>
               <ConditionalTooltip content="Все записи" show={isCollapsed}>
                 <SidebarMenuButton asChild>
@@ -225,7 +230,7 @@ export function NavMain() {
         open={!!deleteTarget}
         onOpenChange={() => setDeleteTarget(null)}
       >
-        <AlertDialogContent>
+        <AlertDialogContent size="sm">
           <AlertDialogHeader>
             <AlertDialogTitle>Удалить раздел?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -236,7 +241,6 @@ export function NavMain() {
           <AlertDialogFooter>
             <AlertDialogCancel>Отмена</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => deleteTarget && handleRemoveSection(deleteTarget)}
             >
               Удалить

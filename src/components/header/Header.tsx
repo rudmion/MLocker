@@ -145,7 +145,7 @@ export function Header() {
             size="icon"
             variant="outline"
             onClick={() => setSettingsOpen(true)}
-            className="transition-all duration-200"
+            className="transition-all duration-200 me-1.5"
           >
             <Settings />
           </Button>

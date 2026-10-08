@@ -1,7 +1,7 @@
 import { Sidebar, SidebarContent } from '@/components/ui/sidebar';
 import { Header } from './HeaderSidebar';
-import { NavSecondary } from './NavSecondary';
 import { NavMain } from './NavMain';
+import { NavPro } from './NavPro';
 import { Separator } from '@/components/ui/separator';
 
 export function AppSidebar() {
@@ -12,8 +12,7 @@ export function AppSidebar() {
       <SidebarContent>
         <NavMain />
       </SidebarContent>
-      <Separator />
-      <NavSecondary />
+      <NavPro />
     </Sidebar>
   );
 }
