@@ -202,7 +202,7 @@ export function CreateRecordDialog({
 
         <Separator />
 
-        <div className="dialog-scroll flex-1 overflow-y-auto min-h-0">
+        <div className="dialog-scroll flex-1 overflow-y-auto min-h-0 px-0.75">
           <FieldGroup>
             <Field>
               <Label>

@@ -55,9 +55,7 @@ function TruncatedText({
           {text}
         </span>
       </TooltipTrigger>
-      <TooltipContent className="max-w-none whitespace-normal">
-        {text}
-      </TooltipContent>
+      <TooltipContent className="max-w-md">{text}</TooltipContent>
     </Tooltip>
   );
 }
@@ -184,7 +182,7 @@ export function Records() {
 
                 <TruncatedText
                   text={record.title}
-                  className="max-w-[200px] truncate whitespace-nowrap overflow-hidden ps-1.5"
+                  className="max-w-[170px] truncate whitespace-nowrap overflow-hidden ps-1.5"
                 />
 
                 {record.url && /^https?:\/\//.test(record.url) && (

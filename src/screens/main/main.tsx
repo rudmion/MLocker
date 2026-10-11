@@ -9,7 +9,7 @@ function Main() {
         <AppSidebar />
       </div>
       <div className="section-content w-full">
-        <div className="sticky top-0 z-50 bg-background/50 backdrop-blur-md px-0.5">
+        <div className="sticky top-0 z-50 bg-background/50 backdrop-blur-md px-0">
           <Header />
           {/* <Separator /> */}
         </div>

@@ -15,6 +15,14 @@ import {
 } from '@/components/ui/input-group';
 
 import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemTitle,
+} from '@/components/ui/item';
+
+import {
   Copy,
   ExternalLink,
   Eye,
@@ -179,19 +187,120 @@ export function InspectorForm({
           {errors.title && <FieldError>{errors.title}</FieldError>}
         </Field>
 
-        {/* DESCRIPTION */}
-        <Field className="flex-1">
-          <FieldLabel>Описание</FieldLabel>
-          <Textarea
-            value={formData.description}
-            onChange={(e) => updateField('description', e.target.value)}
-            placeholder="Введите описание"
-            maxLength={300}
-          />
-          <p className="text-xs text-muted-foreground text-right">
-            {formData.description.length}/300
-          </p>
-        </Field>
+        <Item variant="muted">
+          <ItemContent>
+            {/* LOGIN */}
+            <Field className="flex-1 mb-4">
+              <FieldLabel>
+                Логин <span className="text-destructive">*</span>
+              </FieldLabel>
+              <InputGroup>
+                <InputGroupInput
+                  value={formData.login}
+                  onChange={(e) => {
+                    updateField('login', e.target.value);
+                    clearError('login');
+                  }}
+                  placeholder="Введите логин"
+                />
+
+                {formData.login && (
+                  <InputGroupAddon align="inline-end">
+                    <InputGroupButton
+                      size="icon-xs"
+                      onClick={() => handleCopy('login', formData.login)}
+                    >
+                      {copiedFields['login'] ? (
+                        <Check className="h-4 w-4" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </InputGroupButton>
+                  </InputGroupAddon>
+                )}
+              </InputGroup>
+              {errors.login && <FieldError>{errors.login}</FieldError>}
+            </Field>
+
+            {/* PASSWORD */}
+            <div className="flex items-end gap-3">
+              <Field className="flex-1">
+                <FieldLabel className="flex items-center gap-3">
+                  <div>
+                    Пароль <span className="text-destructive">*</span>
+                  </div>
+                  <div>
+                    {formData.passwordUpdatedAt && (
+                      <p className="text-xs text-muted-foreground">
+                        Последнее изменение:
+                        <span className="ms-1">
+                          {new Date(
+                            formData.passwordUpdatedAt,
+                          ).toLocaleDateString('ru-RU', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                          })}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                </FieldLabel>
+
+                <InputGroup className="gap-2 ps-2">
+                  {renderSecurityIcon(formData.securityLevel)}
+
+                  <InputGroupInput
+                    value={formData.password}
+                    onChange={(e) => {
+                      updateField('password', e.target.value);
+                      clearError('password');
+                    }}
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Введите пароль"
+                  />
+
+                  {formData.password && (
+                    <InputGroupAddon align="inline-end">
+                      <InputGroupButton
+                        size="icon-xs"
+                        onClick={() => setShowPassword((v) => !v)}
+                      >
+                        {showPassword ? (
+                          <EyeOff size={18} />
+                        ) : (
+                          <Eye size={18} />
+                        )}
+                      </InputGroupButton>
+
+                      <InputGroupButton
+                        size="icon-xs"
+                        onClick={() =>
+                          handleCopy('password', formData.password)
+                        }
+                      >
+                        {copiedFields['password'] ? (
+                          <Check className="h-4 w-4" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </InputGroupButton>
+                    </InputGroupAddon>
+                  )}
+                </InputGroup>
+                {errors.password && <FieldError>{errors.password}</FieldError>}
+              </Field>
+
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleGeneratePassword}
+              >
+                <RefreshCcw />
+              </Button>
+            </div>
+          </ItemContent>
+        </Item>
 
         {/* URL */}
         <Field className="flex-1">
@@ -224,95 +333,19 @@ export function InspectorForm({
           </InputGroup>
         </Field>
 
-        {/* LOGIN */}
+        {/* DESCRIPTION */}
         <Field className="flex-1">
-          <FieldLabel>
-            Логин <span className="text-destructive">*</span>
-          </FieldLabel>
-          <InputGroup>
-            <InputGroupInput
-              value={formData.login}
-              onChange={(e) => {
-                updateField('login', e.target.value);
-                clearError('login');
-              }}
-              placeholder="Введите логин"
-            />
-
-            {formData.login && (
-              <InputGroupAddon align="inline-end">
-                <InputGroupButton
-                  size="icon-xs"
-                  onClick={() => handleCopy('login', formData.login)}
-                >
-                  {copiedFields['login'] ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                </InputGroupButton>
-              </InputGroupAddon>
-            )}
-          </InputGroup>
-          {errors.login && <FieldError>{errors.login}</FieldError>}
+          <FieldLabel>Описание</FieldLabel>
+          <Textarea
+            value={formData.description}
+            onChange={(e) => updateField('description', e.target.value)}
+            placeholder="Введите описание"
+            maxLength={300}
+          />
+          <p className="text-xs text-muted-foreground text-right">
+            {formData.description.length}/300
+          </p>
         </Field>
-
-        {/* PASSWORD */}
-        <div className="flex items-end gap-3">
-          <Field className="flex-1">
-            <FieldLabel className="flex items-center gap-3">
-              <div>
-                Пароль <span className="text-destructive">*</span>
-              </div>
-              <div>
-                {formData.passwordUpdatedAt && (
-                  <p className="text-xs text-muted-foreground">
-                    Последнее изменение:
-                    <span className="ms-1">
-                      {new Date(formData.passwordUpdatedAt).toLocaleDateString(
-                        'ru-RU',
-                        { day: '2-digit', month: '2-digit', year: 'numeric' },
-                      )}
-                    </span>
-                  </p>
-                )}
-              </div>
-            </FieldLabel>
-
-            <InputGroup className="gap-2 ps-2">
-              {renderSecurityIcon(formData.securityLevel)}
-
-              <InputGroupInput
-                value={formData.password}
-                onChange={(e) => {
-                  updateField('password', e.target.value);
-                  clearError('password');
-                }}
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Введите пароль"
-              />
-
-              {formData.password && (
-                <InputGroupAddon align="inline-end">
-                  <InputGroupButton
-                    size="icon-xs"
-                    onClick={() => setShowPassword((v) => !v)}
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </InputGroupButton>
-
-                  <InputGroupButton
-                    size="icon-xs"
-                    onClick={() => handleCopy('password', formData.password)}
-                  >
-                    {copiedFields['password'] ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                  </InputGroupButton>
-                </InputGroupAddon>
-              )}
-            </InputGroup>
-            {errors.password && <FieldError>{errors.password}</FieldError>}
-          </Field>
-
-          <Button variant="outline" size="icon" onClick={handleGeneratePassword}>
-            <RefreshCcw />
-          </Button>
-        </div>
 
         {/* CUSTOM FIELDS */}
         <CustomFields

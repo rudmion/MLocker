@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Eye, EyeOff, KeyRound, Copy, Check } from 'lucide-react';
+import { ThinkingOrb } from 'thinking-orbs';
 import { notifications } from '@/lib/notifications';
 
 interface Props {
@@ -182,7 +183,7 @@ export function MasterPasswordScreen({
       {loading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-3">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-foreground" />
+            <ThinkingOrb state="weaving" size={64} />
             <p className="text-sm text-muted-foreground">
               Вход в приложение...
             </p>
