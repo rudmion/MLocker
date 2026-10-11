@@ -14,13 +14,7 @@ import {
   InputGroupInput,
 } from '@/components/ui/input-group';
 
-import {
-  Item,
-  ItemActions,
-  ItemContent,
-  ItemDescription,
-  ItemTitle,
-} from '@/components/ui/item';
+import { Item, ItemContent } from '@/components/ui/item';
 
 import {
   Copy,

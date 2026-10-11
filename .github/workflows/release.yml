@@ -61,5 +61,4 @@ jobs:
           releaseBody: ${{ steps.meta.outputs.body }}
           releaseDraft: false
           prerelease: false
-          createUpdaterArtifacts: true
           args: ${{ matrix.args }}
