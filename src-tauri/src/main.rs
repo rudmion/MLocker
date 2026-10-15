@@ -515,6 +515,79 @@ fn clear_master_password(state: State<AppState>) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+async fn export_backup_file(path: String, content: String) -> Result<(), String> {
+    let p = PathBuf::from(&path);
+    if let Some(parent) = p.parent() {
+        if !parent.as_os_str().is_empty() {
+            tokio::fs::create_dir_all(parent).await.map_err(|e| e.to_string())?;
+        }
+    }
+    tokio::fs::write(&p, content).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn read_backup_file(path: String) -> Result<String, String> {
+    tokio::fs::read_to_string(&path)
+        .await
+        .map_err(|e| format!("Не удалось прочитать файл: {}", e))
+}
+
+#[tauri::command]
+async fn read_raw_vault(state: State<'_, AppState>) -> Result<String, String> {
+    let path = {
+        let path_guard = state.path.lock().unwrap();
+        path_guard.clone()
+    };
+    tokio::fs::read_to_string(&path).await.map_err(|e| e.to_string())
+}
+
+fn decrypt_backup_blocking(content: &str, password: &str) -> Result<String, String> {
+    let data: serde_json::Value = serde_json::from_str(content)
+        .map_err(|_| "Некорректный JSON".to_string())?;
+
+    let sections = data
+        .get("sections")
+        .ok_or_else(|| "В файле нет данных (sections)".to_string())?;
+
+    let has_master = data
+        .get("master_hash")
+        .and_then(|v| v.as_str())
+        .map(|s| !s.is_empty())
+        .unwrap_or(false);
+
+    if !has_master {
+        return Ok(sections.to_string());
+    }
+
+    let master_hash = data
+        .get("master_hash")
+        .and_then(|v| v.as_str())
+        .unwrap();
+    let salt = data.get("salt").and_then(|v| v.as_str()).unwrap_or("");
+
+    if !crypto::verify_password(password, master_hash, salt) {
+        return Err("Неверный пароль от резервной копии".to_string());
+    }
+
+    match data.get("encryption_salt").and_then(|v| v.as_str()) {
+        Some(enc_salt) => {
+            let key = crypto::derive_encryption_key(password, enc_salt)
+                .map_err(|e| e.to_string())?;
+            let decrypted = decrypt_sections(sections, &key)?;
+            Ok(decrypted.to_string())
+        }
+        None => Ok(sections.to_string()),
+    }
+}
+
+#[tauri::command]
+async fn decrypt_backup(content: String, password: String) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || decrypt_backup_blocking(&content, &password))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 fn main() {
     let mut path = dirs::data_dir().unwrap();
     path.push("my-password-manager");
@@ -526,6 +599,7 @@ fn main() {
     }
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
@@ -548,6 +622,10 @@ fn main() {
             setup_master_password_with_recovery,
             reset_master_password,
             clear_master_password,
+            export_backup_file,
+            read_backup_file,
+            read_raw_vault,
+            decrypt_backup,
             favicon::download_favicon
         ])
         .run(tauri::generate_context!())

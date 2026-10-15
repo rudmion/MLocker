@@ -31,6 +31,7 @@ type VaultStore = {
     entryId: string,
     updatedEntry: Partial<Entry>,
   ) => void;
+  replaceData: (sections: Section[]) => void;
 
   saveToRust: (data: DataFile) => void;
   _commitSave: () => void;
@@ -174,6 +175,24 @@ export const useStore = create<VaultStore>((set, get) => ({
     set({ data: updated });
 
     get().saveToRust(updated);
+  },
+
+  replaceData: (sections) => {
+    const updated: DataFile = { sections };
+
+    set({
+      data: updated,
+      selectedSectionId: 'all',
+      selectedEntryId: null,
+      inspectorOpen: false,
+    });
+
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+      saveTimer = null;
+    }
+    pendingData = updated;
+    get()._commitSave();
   },
 
   saveToRust: (data: DataFile) => {

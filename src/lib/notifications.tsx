@@ -56,4 +56,29 @@ export const notifications = {
     toast.warning(message, {
       icon: <AlertTriangle className="text-yellow-500 pe-1" />,
     }),
+
+  exportCompleted: () =>
+    toast.success('Экспорт завершён', {
+      icon: <CircleCheckBig className="text-green-500 pe-1" />,
+    }),
+
+  exportFailed: () =>
+    toast.error('Не удалось экспортировать данные', {
+      icon: <CircleX className="text-red-500 pe-1" />,
+    }),
+
+  importCompleted: () =>
+    toast.success('Данные импортированы', {
+      icon: <CircleCheckBig className="text-green-500 pe-1" />,
+    }),
+
+  importFailed: () =>
+    toast.error('Не удалось импортировать данные', {
+      icon: <CircleX className="text-red-500 pe-1" />,
+    }),
+
+  invalidBackupFile: (message: string) =>
+    toast.error(message || 'Файл не является резервной копией MLocker', {
+      icon: <CircleX className="text-red-500 pe-1" />,
+    }),
 };

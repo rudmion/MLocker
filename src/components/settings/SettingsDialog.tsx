@@ -31,11 +31,13 @@ import {
   Settings,
   Dices,
   Check,
+  Database,
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useState, useEffect, useMemo } from 'react';
 import { getVersion } from '@tauri-apps/api/app';
 import { generatePassword } from '@/utils/generatePassword';
+import { DataTab } from '@/components/settings/DataTab';
 
 type SettingsDialogProps = {
   onCheckForUpdate?: () => void;
@@ -122,6 +124,10 @@ export function SettingsDialog({
               <TabsTrigger value="generator" className="flex-1 gap-1.5">
                 <Dices size={14} />
                 Генератор
+              </TabsTrigger>
+              <TabsTrigger value="data" className="flex-1 gap-1.5">
+                <Database size={14} />
+                Данные
               </TabsTrigger>
             </TabsList>
 
@@ -331,6 +337,11 @@ export function SettingsDialog({
                   'Сохранить'
                 )}
               </Button>
+            </TabsContent>
+
+            {/* === Data Tab === */}
+            <TabsContent value="data">
+              <DataTab />
             </TabsContent>
           </Tabs>
         </DialogContent>
