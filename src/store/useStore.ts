@@ -32,6 +32,7 @@ type VaultStore = {
     updatedEntry: Partial<Entry>,
   ) => void;
   replaceData: (sections: Section[]) => void;
+  mergeData: (sections: Section[]) => void;
 
   saveToRust: (data: DataFile) => void;
   _commitSave: () => void;
@@ -178,7 +179,7 @@ export const useStore = create<VaultStore>((set, get) => ({
   },
 
   replaceData: (sections) => {
-    const updated: DataFile = { sections };
+    const updated: DataFile = { ...(get().data ?? {}), sections };
 
     set({
       data: updated,
@@ -192,6 +193,28 @@ export const useStore = create<VaultStore>((set, get) => ({
       saveTimer = null;
     }
     pendingData = updated;
+    get()._commitSave();
+  },
+
+  mergeData: (sections) => {
+    const current = get().data;
+    const merged: DataFile = {
+      ...(current ?? {}),
+      sections: actions.mergeSections(current?.sections ?? [], sections),
+    };
+
+    set({
+      data: merged,
+      selectedSectionId: 'all',
+      selectedEntryId: null,
+      inspectorOpen: false,
+    });
+
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+      saveTimer = null;
+    }
+    pendingData = merged;
     get()._commitSave();
   },
 

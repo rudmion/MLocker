@@ -16,6 +16,7 @@ import { open } from '@tauri-apps/plugin-shell';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { copyToClipboard } from '@/utils/clipboard';
 import { notifications } from '@/lib/notifications';
+import { useSortStore, type SortKey } from '@/store/useSortStore';
 import {
   Tooltip,
   TooltipContent,
@@ -60,11 +61,18 @@ function TruncatedText({
   );
 }
 
+const SORT_COMPARATORS: Record<SortKey, (a: Entry, b: Entry) => number> = {
+  'date-asc': (a, b) => a.createdAt.localeCompare(b.createdAt),
+  'date-desc': (a, b) => b.createdAt.localeCompare(a.createdAt),
+  'name-asc': (a, b) => a.title.localeCompare(b.title, 'ru'),
+};
+
 export function Records() {
   const data = useStore((state) => state.data);
   const selectedSectionId = useStore((state) => state.selectedSectionId);
   const setSelectedEntry = useStore((state) => state.setSelectedEntry);
   const setInspectorOpen = useStore((state) => state.setInspectorOpen);
+  const sectionSorts = useSortStore((state) => state.sectionSorts);
 
   const [copiedFields, setCopiedFields] = useState<Record<string, boolean>>({});
 
@@ -81,14 +89,21 @@ export function Records() {
 
   const allEntries = sections.flatMap((section) => section.entries ?? []);
 
-  const records = (
+  const baseEntries =
     selectedSectionId === 'all'
       ? allEntries
       : (sections.find((section) => section.id === selectedSectionId)
-          ?.entries ?? [])
-  ).sort((a, b) => {
-    if (a.favourites === b.favourites) return 0;
-    return a.favourites ? -1 : 1;
+          ?.entries ?? []);
+
+  const activeSorts = sectionSorts[selectedSectionId] ?? [];
+
+  const records = [...baseEntries].sort((a, b) => {
+    if (a.favourites !== b.favourites) return a.favourites ? -1 : 1;
+    for (const key of activeSorts) {
+      const result = SORT_COMPARATORS[key](a, b);
+      if (result !== 0) return result;
+    }
+    return 0;
   });
 
   const handleOpenLink = async (record: Entry) => {

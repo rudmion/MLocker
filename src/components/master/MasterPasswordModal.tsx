@@ -9,7 +9,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from '@/components/ui/input-group';
 import { Eye, EyeOff, Loader2, Lock } from 'lucide-react';
 
 type MasterPasswordModalProps = {
@@ -84,8 +89,8 @@ export function MasterPasswordModal({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <div className="relative">
-              <Input
+            <InputGroup>
+              <InputGroupInput
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -93,15 +98,17 @@ export function MasterPasswordModal({
                 autoFocus
                 disabled={loading}
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword((s) => !s)}
-                className="absolute end-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                tabIndex={-1}
-              >
-                {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-              </button>
-            </div>
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  size="icon-xs"
+                  onClick={() => setShowPassword((s) => !s)}
+                  tabIndex={-1}
+                  aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+                >
+                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                </InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
 

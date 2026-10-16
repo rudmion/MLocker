@@ -3,7 +3,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Eye, EyeOff, KeyRound, Copy, Check } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Eye, EyeOff, KeyRound, Copy, Check, AlertTriangle, Info } from 'lucide-react';
 import { ThinkingOrb } from 'thinking-orbs';
 import { notifications } from '@/lib/notifications';
 
@@ -40,6 +41,7 @@ export function MasterPasswordScreen({
 
   const [recoveryKey, setRecoveryKey] = useState<string | null>(null);
   const [keyCopied, setKeyCopied] = useState(false);
+  const [keySaved, setKeySaved] = useState(false);
 
   useEffect(() => {
     if (isBlocked) {
@@ -140,37 +142,83 @@ export function MasterPasswordScreen({
                 Сохраните ключ восстановления
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Запишите или сохраните этот ключ. Он понадобится, если вы
-                забудете мастер-пароль. Ключ будет показан только один раз.
+                Запишите или сохраните этот ключ в надёжном месте.
+                <br />
+                Он понадобится, если вы забудете мастер-пароль — без него вы
+                не сможете восстановить доступ к приложению.
               </p>
             </div>
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-center justify-center gap-2 rounded-lg border p-1">
-              <span className="text-xl font-mono tracking-[0.3em] select-all">
-                {recoveryKey}
-              </span>
+            <div className="flex items-center gap-2">
+              <div className="flex flex-1 items-center justify-center rounded-lg border p-2">
+                <span className="select-all font-mono text-xl tracking-[0.3em]">
+                  {recoveryKey}
+                </span>
+              </div>
+
+              <Button
+                variant="outline"
+                className="size-[46px] shrink-0"
+                onClick={handleCopyKey}
+                aria-label="Скопировать ключ"
+              >
+                {keyCopied ? (
+                  <Check size={16} className="text-green-500" />
+                ) : (
+                  <Copy size={16} />
+                )}
+              </Button>
             </div>
 
-            <Button
-              variant="outline"
-              className="w-full gap-2"
-              onClick={handleCopyKey}
-            >
-              {keyCopied ? <Check size={16} /> : <Copy size={16} />}
-              {keyCopied ? 'Скопировано' : 'Скопировать ключ'}
-            </Button>
-
-            <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3">
-              <p className="text-sm text-yellow-600 dark:text-yellow-400 text-center">
-                Сохраните этот ключ в надёжном месте. Без него вы не сможете
-                восстановить доступ к приложению.
+            <div className="flex items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2">
+              <Info
+                size={16}
+                className="shrink-0 text-blue-600 dark:text-blue-400"
+              />
+              <p className="text-sm text-blue-600 dark:text-blue-400">
+                Ключ будет показан только один раз.
               </p>
             </div>
 
-            <Button className="w-full" onClick={onUnlocked}>
-              Я сохранил ключ
+            <div className="space-y-4 rounded-lg border p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle
+                  size={18}
+                  className="mt-0.5 shrink-0 text-yellow-600 dark:text-yellow-400"
+                />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Важная информация</p>
+                  <p className="text-sm text-muted-foreground">
+                    MLocker не несёт ответственности за ваши данные.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 border-t pt-4">
+                <Switch
+                  id="key-saved"
+                  checked={keySaved}
+                  onCheckedChange={setKeySaved}
+                  className="mt-0.5"
+                />
+                <Label
+                  htmlFor="key-saved"
+                  className="cursor-pointer text-sm leading-snug"
+                >
+                  Я понимаю и согласен с тем, что MLocker не несёт
+                  ответственности за мои данные.
+                </Label>
+              </div>
+            </div>
+
+            <Button
+              className="w-full"
+              onClick={onUnlocked}
+              disabled={!keySaved}
+            >
+              Продолжить
             </Button>
           </div>
         </div>

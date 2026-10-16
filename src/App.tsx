@@ -3,9 +3,10 @@ import { ThemeProvider } from '@/components/theme-provider';
 import Main from './screens/main/main';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useStore } from '@/store/useStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { useMasterStateStore } from '@/store/useMasterStateStore';
 import { MasterPasswordScreen } from '@/components/master/MasterPasswordScreen';
 import { RecoveryScreen } from '@/components/master/RecoveryScreen';
 import { invoke } from '@tauri-apps/api/core';
@@ -36,9 +37,8 @@ function App() {
     dismiss,
   } = useUpdateChecker();
 
-  const [masterState, setMasterState] = useState<
-    'loading' | 'setup' | 'locked' | 'recovery' | 'unlocked'
-  >('loading');
+  const masterState = useMasterStateStore((s) => s.masterState);
+  const setMasterState = useMasterStateStore((s) => s.setMasterState);
 
   const initialized = useRef(false);
   const {

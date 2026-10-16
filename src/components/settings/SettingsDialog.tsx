@@ -33,7 +33,6 @@ import {
   Check,
   Database,
 } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
 import { useState, useEffect, useMemo } from 'react';
 import { getVersion } from '@tauri-apps/api/app';
 import { generatePassword } from '@/utils/generatePassword';
@@ -154,10 +153,8 @@ export function SettingsDialog({
                 </div>
               </div>
 
-              <Separator />
-
               {/* Master Password Toggle */}
-              <div className="space-y-2">
+              <div className="rounded-lg border p-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Shield size={16} className="text-muted-foreground" />
@@ -168,14 +165,12 @@ export function SettingsDialog({
                     onCheckedChange={handleMasterPasswordToggle}
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {masterPasswordEnabled
                     ? 'При входе требуется ввод пароля'
                     : 'Приложение доступно без пароля'}
                 </p>
               </div>
-
-              <Separator />
 
               {/* About */}
               <div className="space-y-2">
@@ -323,8 +318,6 @@ export function SettingsDialog({
                   </div>
                 ))}
               </div>
-
-              <Separator />
 
               {/* Save */}
               <Button className="w-full" onClick={handleSave}>

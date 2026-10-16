@@ -5,10 +5,11 @@ import {
   AlertTriangle,
   Check,
   FileJson,
+  Plus,
   ShieldCheck,
+  Trash2,
   Upload,
 } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,7 +22,9 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useStore } from '@/store/useStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { useMasterStateStore } from '@/store/useMasterStateStore';
 import { notifications } from '@/lib/notifications';
+import { cn } from '@/lib/utils';
 import {
   backupFileName,
   buildPlaintextExport,
@@ -39,6 +42,15 @@ export function DataTab() {
   );
   const data = useStore((s) => s.data);
   const replaceData = useStore((s) => s.replaceData);
+  const mergeData = useStore((s) => s.mergeData);
+  const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
+  const setMasterState = useMasterStateStore((s) => s.setMasterState);
+
+  const totalEntries = (data?.sections ?? []).reduce(
+    (sum, section) => sum + (section.entries?.length ?? 0),
+    0,
+  );
+  const hasEntries = totalEntries > 0;
 
   const [exportIntent, setExportIntent] = useState<
     'plain' | 'encrypted' | null
@@ -55,6 +67,9 @@ export function DataTab() {
   );
   const [importConfirmOpen, setImportConfirmOpen] = useState(false);
 
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [resetAcknowledged, setResetAcknowledged] = useState(false);
+
   const decryptedBackupRef = useRef<string | null>(null);
 
   const writeExportFile = async (content: string, encrypted: boolean) => {
@@ -68,6 +83,7 @@ export function DataTab() {
 
       await invoke('export_backup_file', { path, content });
       notifications.exportCompleted();
+      setSettingsOpen(false);
     } catch (e) {
       console.error('export error:', e);
       notifications.exportFailed();
@@ -90,7 +106,7 @@ export function DataTab() {
   };
 
   const handlePlainExportClick = () => {
-    if (!data) return;
+    if (!hasEntries) return;
     if (masterPasswordEnabled) {
       setImportEncryptedRaw(null);
       setExportIntent('plain');
@@ -102,7 +118,7 @@ export function DataTab() {
   };
 
   const handleEncryptedExportClick = () => {
-    if (!data || !masterPasswordEnabled) return;
+    if (!hasEntries || !masterPasswordEnabled) return;
     setImportEncryptedRaw(null);
     setExportIntent('encrypted');
     setPasswordModalOpen(true);
@@ -172,12 +188,19 @@ export function DataTab() {
     }
   };
 
-  const handleConfirmImport = () => {
+  const finishImport = (mode: 'replace' | 'merge') => {
     if (!importPreview) return;
-    replaceData(importPreview.sections);
+
+    if (mode === 'replace') {
+      replaceData(importPreview.sections);
+    } else {
+      mergeData(importPreview.sections);
+    }
+
     setImportConfirmOpen(false);
     setImportPreview(null);
     notifications.importCompleted();
+    setSettingsOpen(false);
   };
 
   const verifyBackupPassword = async (password: string): Promise<boolean> => {
@@ -195,8 +218,22 @@ export function DataTab() {
     }
   };
 
+  const handleFullReset = async () => {
+    try {
+      await invoke('full_reset');
+      setResetConfirmOpen(false);
+      setResetAcknowledged(false);
+      setSettingsOpen(false);
+      notifications.resetCompleted();
+      setMasterState('setup');
+    } catch (e) {
+      console.error('reset error:', e);
+      notifications.resetFailed();
+    }
+  };
+
   const buttonClass =
-    'flex w-full items-start gap-2.5 rounded-lg border p-3 text-left text-sm transition-colors hover:bg-muted';
+    'flex w-full items-start gap-2.5 rounded-lg border p-3 text-left text-sm transition-colors hover:bg-muted disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50';
 
   return (
     <div className="mt-4 space-y-4">
@@ -207,11 +244,13 @@ export function DataTab() {
           type="button"
           className={buttonClass}
           onClick={handleEncryptedExportClick}
-          disabled={!masterPasswordEnabled}
+          disabled={!hasEntries || !masterPasswordEnabled}
           title={
-            masterPasswordEnabled
-              ? undefined
-              : 'Включите мастер-пароль, чтобы создать шифрованную копию'
+            !hasEntries
+              ? 'Нет записей для экспорта'
+              : !masterPasswordEnabled
+                ? 'Включите мастер-пароль, чтобы создать шифрованную копию'
+                : undefined
           }
         >
           <ShieldCheck
@@ -232,6 +271,8 @@ export function DataTab() {
           type="button"
           className={buttonClass}
           onClick={handlePlainExportClick}
+          disabled={!hasEntries}
+          title={hasEntries ? undefined : 'Нет записей для экспорта'}
         >
           <FileJson
             size={16}
@@ -247,8 +288,6 @@ export function DataTab() {
         </button>
       </div>
 
-      <Separator />
-
       <div className="space-y-2">
         <p className="text-sm font-medium">Импорт</p>
 
@@ -262,6 +301,30 @@ export function DataTab() {
             <p className="font-medium">Импортировать из файла</p>
             <p className="text-xs text-muted-foreground">
               Текущие данные будут полностью заменены
+            </p>
+          </div>
+        </button>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-sm font-medium">Сброс</p>
+
+        <button
+          type="button"
+          className={cn(
+            buttonClass,
+            'border-destructive/30 bg-destructive/5 hover:border-destructive/40 hover:bg-destructive/10',
+          )}
+          onClick={() => {
+            setResetAcknowledged(false);
+            setResetConfirmOpen(true);
+          }}
+        >
+          <Trash2 size={16} className="mt-0.5 shrink-0 text-destructive" />
+          <div>
+            <p className="font-medium text-destructive">Полный сброс</p>
+            <p className="text-xs text-muted-foreground">
+              Удалить все записи и сбросить мастер-пароль
             </p>
           </div>
         </button>
@@ -340,31 +403,95 @@ export function DataTab() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Заменить все данные?</AlertDialogTitle>
+            <AlertDialogTitle>Импорт данных</AlertDialogTitle>
             <AlertDialogDescription>
               В файле: {importPreview?.sectionCount ?? 0} разделов,{' '}
-              {importPreview?.entryCount ?? 0} записей. Текущие данные будут
-              полностью заменены. Действие нельзя отменить.
+              {importPreview?.entryCount ?? 0} записей. Выберите, как
+              импортировать данные.
             </AlertDialogDescription>
           </AlertDialogHeader>
 
-          <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
-            <AlertTriangle
-              size={16}
-              className="mt-0.5 shrink-0 text-destructive"
-            />
-            <p className="text-sm text-destructive">
-              Убедитесь, что выбран именно тот файл, который вам нужен.
-            </p>
+          <div className="space-y-2">
+            <button
+              type="button"
+              className={cn(
+                buttonClass,
+                'border-primary/30 bg-primary/5 hover:border-primary/40 hover:bg-primary/10',
+              )}
+              onClick={() => finishImport('merge')}
+            >
+              <Plus size={16} className="mt-0.5 shrink-0 text-primary" />
+              <div>
+                <p className="font-medium">Объединить</p>
+                <p className="text-xs text-muted-foreground">
+                  Добавить записи к текущим данным, ничего не перезаписывая
+                </p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              className={cn(
+                buttonClass,
+                'border-destructive/30 bg-destructive/5 hover:border-destructive/40 hover:bg-destructive/10',
+              )}
+              onClick={() => finishImport('replace')}
+            >
+              <AlertTriangle
+                size={16}
+                className="mt-0.5 shrink-0 text-destructive"
+              />
+              <div>
+                <p className="font-medium text-destructive">Заменить</p>
+                <p className="text-xs text-muted-foreground">
+                  Полностью перезаписать текущие данные. Действие нельзя отменить
+                </p>
+              </div>
+            </button>
           </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={resetConfirmOpen} onOpenChange={setResetConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Полный сброс приложения?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Все записи, разделы и мастер-пароль будут удалены безвозвратно.
+              Приложение вернётся к начальному экрану создания мастер-ключа.
+              Действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <button
+            type="button"
+            onClick={() => setResetAcknowledged((a) => !a)}
+            className="flex w-full items-center gap-2.5 rounded-lg border p-3 text-left text-sm transition-colors hover:bg-muted"
+          >
+            <span
+              className={`flex size-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                resetAcknowledged
+                  ? 'border-destructive bg-destructive text-destructive-foreground'
+                  : 'border-input'
+              }`}
+            >
+              {resetAcknowledged && <Check size={12} />}
+            </span>
+            <span>Я понимаю, что все данные будут удалены безвозвратно</span>
+          </button>
 
           <AlertDialogFooter>
             <AlertDialogCancel>Отмена</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              onClick={handleConfirmImport}
+              disabled={!resetAcknowledged}
+              onClick={() => void handleFullReset()}
             >
-              Импортировать
+              Сбросить
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

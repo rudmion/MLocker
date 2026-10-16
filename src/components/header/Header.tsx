@@ -4,10 +4,19 @@ import { useEffect, useState } from 'react';
 import { useStore } from '@/store/useStore';
 import { CommandMenu } from './CommandMenu';
 import { CreateRecordDialog } from './CreateRecordDialog';
-import { Plus, Search, Settings } from 'lucide-react';
+import { Plus, Search, Settings, ArrowUpDown } from 'lucide-react';
 import { useCreateRecordDialogStore } from '@/store/createRecordDialog';
 import { getPasswordSecurityLevel } from '@/utils/passwordSecurityLevel';
 import { notifications } from '@/lib/notifications';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useSortStore } from '@/store/useSortStore';
 import {
   Tooltip,
   TooltipContent,
@@ -22,10 +31,25 @@ export function Header() {
   const selectedSectionId = useStore((state) => state.selectedSectionId);
   const setSettingsOpen = useSettingsStore((state) => state.setSettingsOpen);
 
+  const sectionSorts = useSortStore((state) => state.sectionSorts);
+  const toggleSort = useSortStore((state) => state.toggleSort);
+  const activeSorts = sectionSorts[selectedSectionId] ?? [];
+
   const openCreate = useCreateRecordDialogStore((state) => state.open);
   const setOpenCreate = useCreateRecordDialogStore((state) => state.setOpen);
 
   const currentSection = data?.sections.find((s) => s.id === selectedSectionId);
+
+  const sections = data?.sections ?? [];
+  const totalRecords = sections.reduce(
+    (sum, s) => sum + (s.entries?.length ?? 0),
+    0,
+  );
+  const hasAnyRecords = totalRecords > 0;
+  const currentSectionCount =
+    selectedSectionId === 'all'
+      ? totalRecords
+      : (currentSection?.entries?.length ?? 0);
 
   const [openSearch, setOpenSearch] = useState(false);
   const [title, setTitle] = useState('');
@@ -101,6 +125,61 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-2">
+          <DropdownMenu modal={false}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className={currentSectionCount > 0 ? undefined : 'hidden'}
+                  >
+                    <ArrowUpDown />
+                  </Button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Сортировка</TooltipContent>
+            </Tooltip>
+            <DropdownMenuContent align="end" className="w-60 p-1.5">
+              <DropdownMenuLabel className="px-2 py-1.5 text-sm font-semibold">
+                Сортировка
+              </DropdownMenuLabel>
+              <DropdownMenuLabel className="px-2 pt-1 pb-1 text-xs font-medium text-muted-foreground">
+                По дате
+              </DropdownMenuLabel>
+              <DropdownMenuCheckboxItem
+                className="py-2 pl-2 text-sm"
+                checked={activeSorts.includes('date-desc')}
+                onCheckedChange={() =>
+                  toggleSort(selectedSectionId, 'date-desc')
+                }
+                onSelect={(e) => e.preventDefault()}
+              >
+                Новые
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                className="py-2 pl-2 text-sm"
+                checked={activeSorts.includes('date-asc')}
+                onCheckedChange={() =>
+                  toggleSort(selectedSectionId, 'date-asc')
+                }
+                onSelect={(e) => e.preventDefault()}
+              >
+                Старые
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator className="my-1" />
+              <DropdownMenuCheckboxItem
+                className="py-2 pl-2 text-sm"
+                checked={activeSorts.includes('name-asc')}
+                onCheckedChange={() =>
+                  toggleSort(selectedSectionId, 'name-asc')
+                }
+                onSelect={(e) => e.preventDefault()}
+              >
+                По алфавиту (А–Я)
+              </DropdownMenuCheckboxItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -127,6 +206,7 @@ export function Header() {
                 size="icon"
                 variant="outline"
                 onClick={() => setOpenSearch(true)}
+                className={hasAnyRecords ? undefined : 'hidden'}
               >
                 <Search />
               </Button>

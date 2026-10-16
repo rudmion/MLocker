@@ -62,3 +62,31 @@ export const removeEntry = (
       : section,
   ),
 });
+
+// Слияние импортируемых секций с текущими без перезаписи:
+// существующие данные сохраняются, новые записи добавляются.
+export const mergeSections = (
+  existing: Section[],
+  incoming: Section[],
+): Section[] => {
+  const merged: Section[] = existing.map((s) => ({
+    ...s,
+    entries: [...s.entries],
+  }));
+
+  for (const inc of incoming) {
+    const idx = merged.findIndex((s) => s.id === inc.id);
+
+    if (idx === -1) {
+      merged.push({ ...inc, entries: [...inc.entries] });
+      continue;
+    }
+
+    const target = merged[idx];
+    const existingIds = new Set(target.entries.map((e) => e.id));
+    const newEntries = inc.entries.filter((e) => !existingIds.has(e.id));
+    merged[idx] = { ...target, entries: [...target.entries, ...newEntries] };
+  }
+
+  return merged;
+};

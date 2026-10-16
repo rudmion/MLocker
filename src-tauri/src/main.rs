@@ -142,18 +142,34 @@ async fn save_data(data: String, state: State<'_, AppState>) -> Result<(), Strin
     }
 
     let path_clone = path.clone();
+    let path_for_read = path.clone();
 
     let content = tokio::task::spawn_blocking(move || {
+        let mut parsed: serde_json::Value = serde_json::from_str(&data)
+            .map_err(|e| format!("Invalid JSON: {}", e))?;
+
+        // Preserve top-level metadata (master_hash, salt, encryption_salt, ...)
+        // that the incoming payload may omit, so a save never wipes the master key.
+        if let Ok(existing_raw) = std::fs::read_to_string(&path_for_read) {
+            if let Ok(existing) = serde_json::from_str::<serde_json::Value>(&existing_raw) {
+                if let (Some(existing_obj), Some(parsed_obj)) =
+                    (existing.as_object(), parsed.as_object_mut())
+                {
+                    for (k, v) in existing_obj {
+                        if !parsed_obj.contains_key(k) {
+                            parsed_obj.insert(k.clone(), v.clone());
+                        }
+                    }
+                }
+            }
+        }
+
         if let Some(key) = key {
-            let mut parsed: serde_json::Value = serde_json::from_str(&data)
-                .map_err(|e| format!("Invalid JSON: {}", e))?;
             if let Some(sections) = parsed.get("sections") {
                 parsed["sections"] = encrypt_sections(sections, &key)?;
             }
-            serde_json::to_string_pretty(&parsed).map_err(|e| e.to_string())
-        } else {
-            Ok(data)
         }
+        serde_json::to_string_pretty(&parsed).map_err(|e| e.to_string())
     }).await.map_err(|e| e.to_string())??;
 
     tokio::fs::write(&path_clone, content).await.map_err(|e| e.to_string())?;
@@ -516,6 +532,28 @@ fn clear_master_password(state: State<AppState>) -> Result<(), String> {
 }
 
 #[tauri::command]
+async fn full_reset(state: State<'_, AppState>) -> Result<(), String> {
+    let path = {
+        let path_guard = state.path.lock().unwrap();
+        path_guard.clone()
+    };
+
+    if let Some(parent) = path.parent() {
+        tokio::fs::create_dir_all(parent).await.map_err(|e| e.to_string())?;
+    }
+
+    // Overwrite the vault with an empty, unencrypted file (no master key).
+    tokio::fs::write(&path, r#"{"sections":[]}"#)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let mut key_guard = state.encryption_key.lock().unwrap();
+    *key_guard = None;
+
+    Ok(())
+}
+
+#[tauri::command]
 async fn export_backup_file(path: String, content: String) -> Result<(), String> {
     let p = PathBuf::from(&path);
     if let Some(parent) = p.parent() {
@@ -622,6 +660,7 @@ fn main() {
             setup_master_password_with_recovery,
             reset_master_password,
             clear_master_password,
+            full_reset,
             export_backup_file,
             read_backup_file,
             read_raw_vault,

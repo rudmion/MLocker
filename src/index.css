@@ -133,6 +133,10 @@
   }
 }
 
+input[type='password']::-ms-reveal {
+  display: none;
+}
+
 [data-slot='dropdown-menu-item'],
 [data-slot='dropdown-menu-sub-trigger'] {
   cursor: pointer;

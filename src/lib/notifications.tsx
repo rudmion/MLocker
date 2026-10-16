@@ -81,4 +81,14 @@ export const notifications = {
     toast.error(message || 'Файл не является резервной копией MLocker', {
       icon: <CircleX className="text-red-500 pe-1" />,
     }),
+
+  resetCompleted: () =>
+    toast.success('Приложение сброшено', {
+      icon: <CircleCheckBig className="text-green-500 pe-1" />,
+    }),
+
+  resetFailed: () =>
+    toast.error('Не удалось сбросить приложение', {
+      icon: <CircleX className="text-red-500 pe-1" />,
+    }),
 };
