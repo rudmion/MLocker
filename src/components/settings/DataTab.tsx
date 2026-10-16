@@ -37,9 +37,6 @@ import { MasterPasswordModal } from '@/components/master/MasterPasswordModal';
 const JSON_FILTERS = [{ name: 'JSON', extensions: ['json'] }];
 
 export function DataTab() {
-  const masterPasswordEnabled = useSettingsStore(
-    (s) => s.masterPasswordEnabled,
-  );
   const data = useStore((s) => s.data);
   const replaceData = useStore((s) => s.replaceData);
   const mergeData = useStore((s) => s.mergeData);
@@ -52,8 +49,13 @@ export function DataTab() {
   );
   const hasEntries = totalEntries > 0;
 
-  const [exportIntent, setExportIntent] = useState<
-    'plain' | 'encrypted' | null
+  const [passwordPurpose, setPasswordPurpose] = useState<
+    | 'export-plain'
+    | 'export-encrypted'
+    | 'import'
+    | 'import-backup'
+    | 'reset'
+    | null
   >(null);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [plainWarningOpen, setPlainWarningOpen] = useState(false);
@@ -105,58 +107,64 @@ export function DataTab() {
     }
   };
 
-  const handlePlainExportClick = () => {
-    if (!hasEntries) return;
-    if (masterPasswordEnabled) {
-      setImportEncryptedRaw(null);
-      setExportIntent('plain');
-      setPasswordModalOpen(true);
-    } else {
-      setAcknowledged(false);
-      setPlainWarningOpen(true);
-    }
-  };
-
-  const handleEncryptedExportClick = () => {
-    if (!hasEntries || !masterPasswordEnabled) return;
-    setImportEncryptedRaw(null);
-    setExportIntent('encrypted');
+  const openPasswordModal = (purpose: typeof passwordPurpose) => {
+    if (!purpose) return;
+    setPasswordPurpose(purpose);
     setPasswordModalOpen(true);
   };
 
-  const handlePasswordSuccess = () => {
-    if (exportIntent === 'plain') {
-      setExportIntent(null);
-      setAcknowledged(false);
-      setPlainWarningOpen(true);
-    } else if (exportIntent === 'encrypted') {
-      setExportIntent(null);
-      void proceedEncryptedExport();
-    } else if (importEncryptedRaw !== null) {
-      const decrypted = decryptedBackupRef.current;
-      decryptedBackupRef.current = null;
-      setImportEncryptedRaw(null);
-      if (!decrypted) return;
+  const handlePlainExportClick = () => {
+    if (!hasEntries) return;
+    openPasswordModal('export-plain');
+  };
 
-      try {
-        const preview = parseSectionsArray(JSON.parse(decrypted));
-        if (!preview) {
-          notifications.invalidBackupFile(
-            'Некорректная структура данных в файле',
-          );
-          return;
-        }
-        setImportPreview(preview);
-        setImportConfirmOpen(true);
-      } catch {
-        notifications.invalidBackupFile(
-          'Некорректная структура данных в файле',
-        );
+  const handleEncryptedExportClick = () => {
+    if (!hasEntries) return;
+    openPasswordModal('export-encrypted');
+  };
+
+  const handleImportClick = () => {
+    openPasswordModal('import');
+  };
+
+  const showDecryptedPreview = (decrypted: string | null) => {
+    if (!decrypted) return;
+
+    try {
+      const preview = parseSectionsArray(JSON.parse(decrypted));
+      if (!preview) {
+        notifications.invalidBackupFile('Некорректная структура данных в файле');
+        return;
       }
+      setImportPreview(preview);
+      setImportConfirmOpen(true);
+    } catch {
+      notifications.invalidBackupFile('Некорректная структура данных в файле');
     }
   };
 
-  const handleImportClick = async () => {
+  const handlePasswordSuccess = () => {
+    const purpose = passwordPurpose;
+    setPasswordPurpose(null);
+
+    if (purpose === 'export-plain') {
+      setAcknowledged(false);
+      setPlainWarningOpen(true);
+    } else if (purpose === 'export-encrypted') {
+      void proceedEncryptedExport();
+    } else if (purpose === 'import') {
+      void pickImportFile();
+    } else if (purpose === 'import-backup') {
+      const decrypted = decryptedBackupRef.current;
+      decryptedBackupRef.current = null;
+      setImportEncryptedRaw(null);
+      showDecryptedPreview(decrypted);
+    } else if (purpose === 'reset') {
+      void handleFullReset();
+    }
+  };
+
+  const pickImportFile = async () => {
     try {
       const path = await openDialog({
         title: 'Выберите файл резервной копии',
@@ -179,9 +187,8 @@ export function DataTab() {
         return;
       }
 
-      setExportIntent(null);
       setImportEncryptedRaw(raw);
-      setPasswordModalOpen(true);
+      openPasswordModal('import-backup');
     } catch (e) {
       console.error('import error:', e);
       notifications.importFailed();
@@ -235,6 +242,24 @@ export function DataTab() {
   const buttonClass =
     'flex w-full items-start gap-2.5 rounded-lg border p-3 text-left text-sm transition-colors hover:bg-muted disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50';
 
+  const passwordModalTitle =
+    passwordPurpose === 'import'
+      ? 'Импорт данных'
+      : passwordPurpose === 'import-backup'
+        ? 'Пароль резервной копии'
+        : passwordPurpose === 'reset'
+          ? 'Подтверждение сброса'
+          : 'Подтверждение экспорта';
+
+  const passwordModalDescription =
+    passwordPurpose === 'import'
+      ? 'Введите мастер-пароль, чтобы выбрать файл для импорта'
+      : passwordPurpose === 'import-backup'
+        ? 'Файл зашифрован. Введите пароль, который использовался при создании копии'
+        : passwordPurpose === 'reset'
+          ? 'Введите мастер-пароль для подтверждения полного сброса'
+          : 'Введите мастер-пароль для подтверждения экспорта';
+
   return (
     <div className="mt-4 space-y-4">
       <div className="space-y-2">
@@ -244,14 +269,8 @@ export function DataTab() {
           type="button"
           className={buttonClass}
           onClick={handleEncryptedExportClick}
-          disabled={!hasEntries || !masterPasswordEnabled}
-          title={
-            !hasEntries
-              ? 'Нет записей для экспорта'
-              : !masterPasswordEnabled
-                ? 'Включите мастер-пароль, чтобы создать шифрованную копию'
-                : undefined
-          }
+          disabled={!hasEntries}
+          title={hasEntries ? undefined : 'Нет записей для экспорта'}
         >
           <ShieldCheck
             size={16}
@@ -260,9 +279,7 @@ export function DataTab() {
           <div>
             <p className="font-medium">Шифрованная резервная копия</p>
             <p className="text-xs text-muted-foreground">
-              {masterPasswordEnabled
-                ? 'Восстановление в MLocker с текущим мастер-паролем'
-                : 'Недоступно: мастер-пароль выключен'}
+              Восстановление в MLocker с текущим мастер-паролем
             </p>
           </div>
         </button>
@@ -294,7 +311,7 @@ export function DataTab() {
         <button
           type="button"
           className={buttonClass}
-          onClick={() => void handleImportClick()}
+          onClick={handleImportClick}
         >
           <Upload size={16} className="mt-0.5 shrink-0 text-muted-foreground" />
           <div>
@@ -332,18 +349,20 @@ export function DataTab() {
 
       <MasterPasswordModal
         open={passwordModalOpen}
-        onOpenChange={setPasswordModalOpen}
-        title={
-          importEncryptedRaw !== null
-            ? 'Импорт резервной копии'
-            : 'Подтверждение экспорта'
+        onOpenChange={(open) => {
+          setPasswordModalOpen(open);
+          if (!open) {
+            setPasswordPurpose(null);
+            setImportEncryptedRaw(null);
+          }
+        }}
+        title={passwordModalTitle}
+        description={passwordModalDescription}
+        verify={
+          passwordPurpose === 'import-backup'
+            ? verifyBackupPassword
+            : undefined
         }
-        description={
-          importEncryptedRaw !== null
-            ? 'Файл зашифрован. Введите мастер-пароль, который использовался при создании копии'
-            : 'Введите мастер-пароль для подтверждения экспорта'
-        }
-        verify={importEncryptedRaw !== null ? verifyBackupPassword : undefined}
         onSuccess={handlePasswordSuccess}
       />
 
@@ -489,7 +508,10 @@ export function DataTab() {
             <AlertDialogAction
               variant="destructive"
               disabled={!resetAcknowledged}
-              onClick={() => void handleFullReset()}
+              onClick={() => {
+                setResetConfirmOpen(false);
+                openPasswordModal('reset');
+              }}
             >
               Сбросить
             </AlertDialogAction>

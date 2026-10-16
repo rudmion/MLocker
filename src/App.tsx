@@ -19,9 +19,6 @@ import { UpdateNotification } from '@/components/update/UpdateNotification';
 
 function App() {
   const loadData = useStore((s) => s.loadData);
-  const masterPasswordEnabled = useSettingsStore(
-    (s) => s.masterPasswordEnabled,
-  );
 
   useKeyboardShortcuts();
 
@@ -64,12 +61,6 @@ function App() {
     const init = async () => {
       try {
         const isSet = await invoke<boolean>('check_master_lock');
-
-        if (!masterPasswordEnabled) {
-          setMasterState('unlocked');
-          await loadData();
-          return;
-        }
 
         setMasterState(isSet ? 'locked' : 'setup');
       } catch {
