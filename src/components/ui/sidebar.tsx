@@ -22,7 +22,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { PanelLeftIcon } from 'lucide-react';
+import { ChevronRightIcon } from 'lucide-react';
 
 const SIDEBAR_STORAGE_KEY = 'mlocker-sidebar-open';
 const SIDEBAR_WIDTH = '16rem';
@@ -268,7 +268,7 @@ function SidebarTrigger({
   onClick,
   ...props
 }: React.ComponentProps<typeof Button>) {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, state } = useSidebar();
 
   return (
     <Button
@@ -283,7 +283,12 @@ function SidebarTrigger({
       }}
       {...props}
     >
-      <PanelLeftIcon />
+      <ChevronRightIcon
+        className={cn(
+          'transition-transform duration-200 ease-linear',
+          state === 'expanded' && 'rotate-180',
+        )}
+      />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   );
