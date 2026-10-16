@@ -1,10 +1,20 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   X,
   Download,
   RotateCcw,
   CheckCircle2,
   AlertCircle,
+  FileText,
 } from 'lucide-react';
 import type { UpdateStatus } from '@/hooks/useUpdateChecker';
 
@@ -31,6 +41,8 @@ export function UpdateNotification({
   onRestart,
   onDismiss,
 }: UpdateNotificationProps) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
+
   if (status === 'idle' || status === 'checking') return null;
 
   return (
@@ -60,11 +72,18 @@ export function UpdateNotification({
           <span className="font-medium text-primary">{latestVersion}</span>
         </div>
 
-        {/* Changelog */}
+        {/* Details button (replaces inline changelog) */}
         {changelog && status === 'hasUpdate' && (
-          <div className="max-h-40 space-y-1 overflow-y-auto whitespace-pre-wrap rounded-md bg-muted/50 p-2 text-xs leading-relaxed text-muted-foreground">
-            {changelog}
-          </div>
+          <button
+            type="button"
+            onClick={() => setDetailsOpen(true)}
+            className="flex w-full items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-muted"
+          >
+            <FileText size={14} className="shrink-0" />
+            <span className="truncate">
+              {changelog.split('\n').find((l) => l.trim()) ?? 'Описание обновления'}
+            </span>
+          </button>
         )}
 
         {/* Download progress */}
@@ -112,9 +131,9 @@ export function UpdateNotification({
               variant="outline"
               size="sm"
               className="flex-1"
-              onClick={onDismiss}
+              onClick={() => setDetailsOpen(true)}
             >
-              Позже
+              Подробнее
             </Button>
             <Button size="sm" className="flex-1" onClick={onInstall}>
               Обновить
@@ -140,6 +159,42 @@ export function UpdateNotification({
           </Button>
         )}
       </div>
+
+      {/* Details modal */}
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Обновление до версии {latestVersion}</DialogTitle>
+            <DialogDescription>
+              Текущая версия {currentVersion} &rarr; {latestVersion}
+            </DialogDescription>
+          </DialogHeader>
+
+          {changelog ? (
+            <div className="max-h-[50vh] overflow-y-auto whitespace-pre-wrap rounded-md bg-muted/50 p-3 text-sm leading-relaxed text-muted-foreground">
+              {changelog}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Описание обновления недоступно.
+            </p>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailsOpen(false)}>
+              Позже
+            </Button>
+            <Button
+              onClick={() => {
+                setDetailsOpen(false);
+                onInstall();
+              }}
+            >
+              Обновить сейчас
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

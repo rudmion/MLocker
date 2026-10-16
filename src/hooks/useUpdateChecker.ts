@@ -48,32 +48,46 @@ export function useUpdateChecker() {
     [],
   );
 
-  const checkForUpdate = useCallback(async (silent = true) => {
-    try {
-      setStatus('checking');
-      setError(null);
+  const checkForUpdate = useCallback(
+    async (silent = true) => {
+      try {
+        setStatus('checking');
+        setError(null);
 
-      const update = await check();
+        const update = await check();
 
-      if (update) {
-        setUpdateInfo(update);
-        setStatus('hasUpdate');
-        void fetchReleaseNotes(update.version, update.body);
-      } else {
-        setStatus('idle');
+        if (update) {
+          setUpdateInfo(update);
+          setStatus('hasUpdate');
+          void fetchReleaseNotes(update.version, update.body);
+        } else {
+          setStatus('idle');
+          if (!silent) {
+            toast.info('Приложение уже имеет последнюю версию');
+          }
+        }
+      } catch (err) {
         if (!silent) {
-          toast.info('Приложение уже имеет последнюю версию');
+          toast.error('Не удалось проверить обновления. Попробуйте позже.');
+          setStatus('idle');
+        } else {
+          setStatus('idle');
         }
       }
-    } catch (err) {
-      if (!silent) {
-        toast.error('Не удалось проверить обновления. Попробуйте позже.');
-        setStatus('idle');
-      } else {
-        setStatus('idle');
-      }
-    }
-  }, [fetchReleaseNotes]);
+    },
+    [fetchReleaseNotes],
+  );
+
+  //   const checkForUpdate = useCallback(async () => {
+  //   setStatus('hasUpdate');
+  //   setReleaseNotes(
+  //     '## Что нового\n\n- Исправлен баг с потерей мастер-ключа при импорте\n- Экран ключа восстановления с подтверждением\n- Полный сброс приложения в настройках',
+  //   );
+  //   setUpdateInfo({
+  //     currentVersion: '1.6.5',
+  //     version: '1.7.0',
+  //   } as unknown as Update);
+  // }, []);
 
   const downloadAndInstall = useCallback(async () => {
     if (!updateInfo) return;
@@ -96,7 +110,10 @@ export function useUpdateChecker() {
             downloadedBytes.current += event.data.chunkLength;
             if (totalBytes.current > 0) {
               setDownloadProgress(
-                Math.min(100, (downloadedBytes.current / totalBytes.current) * 100)
+                Math.min(
+                  100,
+                  (downloadedBytes.current / totalBytes.current) * 100,
+                ),
               );
             }
             break;
@@ -139,7 +156,9 @@ export function useUpdateChecker() {
     autoChecked.current = true;
 
     const timer = setTimeout(() => {
-      const snoozeUntil = Number(localStorage.getItem('updateSnoozeUntil') || '0');
+      const snoozeUntil = Number(
+        localStorage.getItem('updateSnoozeUntil') || '0',
+      );
       if (Date.now() < snoozeUntil) return;
       checkForUpdate(true);
     }, 3000);
